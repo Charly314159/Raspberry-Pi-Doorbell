@@ -1,5 +1,8 @@
 #!/bin/sh
 # Speaker relay run by go2rtc for two-way audio: plays the browser's voice and
 # reports its level to the Visiophone service (LED "follow the sound").
+# Errors go to the journal (tag visiophone-speaker): journalctl -t visiophone-speaker
 export PYTHONPATH=/opt/visiophone:/opt/visiophone/vendor
-exec /usr/bin/python3 -m visiophone.sound relay "$@"
+logger -t visiophone-speaker "started: $*"
+/usr/bin/python3 -m visiophone.sound relay "$@" 2>&1 | logger -t visiophone-speaker
+logger -t visiophone-speaker "stopped"

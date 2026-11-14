@@ -22,7 +22,7 @@ def test_csi_full_fov(config, hw, monkeypatch):
     src = data["streams"]["doorbell"][0]
     assert "--mode 1640:1232:10:P" in src and "--rotation 180" in src and "--profile baseline" in src
     assert "--level 4 " in src
-    assert data["streams"]["doorbell_web"] == ["rtsp://127.0.0.1:8554/doorbell", "exec:/usr/local/bin/visiophone-speaker --device plughw:CARD=Headphones,DEV=0#backchannel=1"]
+    assert data["streams"]["doorbell_web"] == ["rtsp://127.0.0.1:8554/doorbell", "exec:/usr/local/bin/visiophone-speaker --device plughw:CARD=Headphones,DEV=0#backchannel=1#audio=pcma/8000"]
     config.update("audio", {"speaker_relay": False})
     data, _ = render(config, hw, monkeypatch, speaker="/dev/snd/pcmC0D0p")
     assert data["streams"]["doorbell_web"][1] == "alsa:device?audio=/dev/snd/pcmC0D0p"

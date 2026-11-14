@@ -98,34 +98,46 @@ def logs(lines=200):
     return out.stdout or out.stderr
 
 
-def play_test_tone(alsa_device, seconds=1.0, frequency=880):
-    """Play a short tone on an ALSA device. Returns (ok, message)."""
-    import io
+def play_test_tone(alsa_device, seconds=1.5, frequency=660, on_level=None):
+    """Play a short tone on an ALSA device. Returns (ok, message).
+    on_level(0..1) is called every 40 ms with the level played (LED follows it)."""
     import math
     import struct
-    import wave
 
-    rate = 48000
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(rate)
-        frames = int(rate * seconds)
-        fade = rate // 50
-        samples = []
-        for i in range(frames):
-            envelope = min(1.0, i / fade, (frames - i) / fade)
-            samples.append(int(12000 * envelope * math.sin(2 * math.pi * frequency * i / rate)))
-        wav.writeframes(struct.pack(f"<{frames}h", *samples))
+    from .sound import level_from_s16le
+
+    rate = 8000
+    chunk = int(rate * 0.04)
+    total = int(rate * seconds)
+    fade = rate // 50
     try:
-        result = subprocess.run(["aplay", "-q", "-D", alsa_device, "-"], input=buffer.getvalue(),
-                                capture_output=True, timeout=seconds + 10)
-    except (OSError, subprocess.TimeoutExpired) as e:
+        player = subprocess.Popen(["aplay", "-q", "-t", "raw", "-f", "S16_LE", "-r", str(rate), "-c", "1",
+                                   "-D", alsa_device, "-"], stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as e:
         return False, str(e)
-    if result.returncode:
-        message = result.stderr.decode(errors="replace").strip()
+    try:
+        for start in range(0, total, chunk):
+            samples = []
+            for i in range(start, min(start + chunk, total)):
+                envelope = min(1.0, i / fade, (total - i) / fade)
+                samples.append(int(12000 * envelope * math.sin(2 * math.pi * frequency * i / rate)))
+            data = struct.pack(f"<{len(samples)}h", *samples)
+            player.stdin.write(data)       # blocks at playback speed
+            if on_level:
+                on_level(level_from_s16le(data))
+        player.stdin.close()
+    except BrokenPipeError:
+        pass
+    finally:
+        if on_level:
+            on_level(0.0)
+    try:
+        player.wait(5)
+    except subprocess.TimeoutExpired:
+        player.kill()
+    if player.returncode:
+        message = player.stderr.read().decode(errors="replace").strip()
         if "busy" in message.lower():
-            message = "The speaker is in use (a browser is probably talking through it)."
+            message = "The speaker is in use (a browser or a voice message is playing through it)."
         return False, message
     return True, ""

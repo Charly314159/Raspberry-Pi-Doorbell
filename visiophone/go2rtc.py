@@ -194,7 +194,10 @@ def build(cfg, hw):
         if speaker:
             if audio.get("speaker_relay", True):
                 card_id, dev = audio["speaker"].rsplit(",", 1)
-                web.append(f"exec:{SPEAKER_RELAY} --device plughw:CARD={card_id},DEV={dev}#backchannel=1")
+                # Browsers send Opus, G722, PCMU or PCMA: ask go2rtc for A-law 8 kHz
+                # (its exec default, 16 kHz PCM, matches no browser and never starts)
+                web.append(f"exec:{SPEAKER_RELAY} --device plughw:CARD={card_id},DEV={dev}"
+                           f"#backchannel=1#audio=pcma/8000")
             else:
                 web.append(f"alsa:device?audio={speaker}")
         streams[f"{name}_web"] = web

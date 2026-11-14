@@ -314,7 +314,7 @@ def create_app(service):
             return jsonify(ok=False, message="No speaker selected."), 400
         key = cfg.section("audio")["speaker"]
         card_id, dev = key.rsplit(",", 1)
-        ok, message = system.play_test_tone(f"plughw:CARD={card_id},DEV={dev}")
+        ok, message = system.play_test_tone(f"plughw:CARD={card_id},DEV={dev}", on_level=service.io.feed_sound)
         return jsonify(ok=ok, message=message or "Test tone played.")
 
     # --- Button and LED ------------------------------------------------------
