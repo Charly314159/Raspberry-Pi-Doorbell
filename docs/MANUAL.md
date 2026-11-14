@@ -218,7 +218,10 @@ menu:
       enabled: true
 ```
 
-On the doorbell's **System** page, check **Allow dashboards served by another address to open the live player**, or the browser blocks the connection. Viewers connected this way are seen by the doorbell: `binary_sensor.visiophone_live_view` turns on, which the video message blueprint takes as an answer.
+How the card reaches the doorbell depends on how you open Home Assistant:
+
+- **Home Assistant over HTTPS** (remote access, DuckDNS, Nabu Casa, the app with an HTTPS address): the browser refuses plain-HTTP connections from an HTTPS page. Install **Hass Web Proxy** (`dermotduffy/hass-web-proxy-integration`) from the Marketplace, restart Home Assistant and add the integration: the card then streams through Home Assistant automatically. This also makes the browser microphone available, since the page is secure.
+- **Home Assistant over plain HTTP** on your network: on the doorbell's **System** page, check **Allow dashboards served by another address to open the live player**, or the browser blocks the connection. Viewers connected this way are seen by the doorbell: `binary_sensor.visiophone_live_view` turns on, which the video message blueprint takes as an answer.
 
 ### Example automation
 
