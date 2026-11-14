@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<div class="card login">
+  <img src="{{ url_for('static', filename='icon.svg') }}" alt="" width="48" height="48">
+  <h1>{{ device_name }}</h1>
+  {% if no_password %}
+    <p class="muted">No password is set yet. On the Pi, run <code>sudo visiophone-passwd</code>.</p>
+  {% endif %}
+  <form method="post">
+    <label>Password
+      <input type="password" name="password" autocomplete="current-password" autofocus required>
+    </label>
+    <button type="submit" class="primary">Log in</button>
+  </form>
+</div>
+{% endblock %}

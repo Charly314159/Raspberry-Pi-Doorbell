@@ -1,0 +1,22 @@
+[Unit]
+Description=Visiophone doorbell (web interface, button, Home Assistant link)
+After=network-online.target sound.target
+Wants=network-online.target go2rtc.service
+
+[Service]
+User=visiophone
+Group=visiophone
+# Port 80 without running as root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+StateDirectory=visiophone
+# lgpio creates notification files in the working directory
+RuntimeDirectory=visiophone
+WorkingDirectory=/run/visiophone
+Environment=GPIOZERO_PIN_FACTORY=lgpio
+Environment=PYTHONPATH=/opt/visiophone
+ExecStart=/usr/bin/python3 -m visiophone
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

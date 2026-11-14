@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Manual{% endblock %}
+{% block main_class %}manual{% endblock %}
+{% block content %}
+<div class="manual-layout">
+  <aside class="toc">{{ toc|safe }}</aside>
+  <article class="prose">{{ content|safe }}</article>
+</div>
+{% endblock %}

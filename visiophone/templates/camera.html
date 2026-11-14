@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Camera{% endblock %}
+{% block content %}
+<h1>Camera</h1>
+
+<div class="grid">
+<section class="card">
+  <h2>Detected cameras</h2>
+  <h3>CSI (ribbon cable)</h3>
+  {% if hw.csi %}
+    <ul class="plain">
+    {% for c in hw.csi %}
+      <li><strong>{{ c.index }}: {{ c.sensor }}</strong> — {{ c.width }}×{{ c.height }}
+        <small class="muted">{{ c.modes|length }} sensor modes</small></li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">None. If a CSI camera is connected, it may need to be declared below.</p>
+  {% endif %}
+  <h3>USB</h3>
+  {% if hw.usb %}
+    <ul class="plain">
+    {% for c in hw.usb %}
+      <li><strong>{{ c.name }}</strong> — {{ c.formats.keys()|join(', ')|upper }}
+        <br><small class="muted"><code>{{ c.path }}</code></small></li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">None.</p>
+  {% endif %}
+  <p class="muted small">{{ hw.model }} · H.264 encoder: {{ 'hardware' if hw.hw_encoder else 'software (slower)' }}</p>
+  <form method="post" action="{{ url_for('camera_rescan') }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button type="submit">Scan again</button>
+  </form>
+</section>
+
+<section class="card preview-card">
+  <h2>Preview</h2>
+  {% if cam.source != 'none' %}
+    <img class="preview" src="{{ url_for('snapshot') }}" alt="Camera snapshot" data-refresh="3000"
+         onerror="this.classList.add('broken')">
+    <div class="actions">
+      <a class="button" target="_blank" rel="noopener" data-go2rtc="stream.html?src={{ streams.name }}">Live video</a>
+    </div>
+  {% else %}
+    <p class="muted">No camera selected.</p>
+  {% endif %}
+</section>
+</div>
+
+<section class="card">
+  <h2>Settings</h2>
+  <form method="post" class="form" id="camera-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <fieldset>
+      <legend>Source</legend>
+      <label class="radio"><input type="radio" name="source" value="none" {{ 'checked' if cam.source == 'none' }}> None</label>
+      <label class="radio"><input type="radio" name="source" value="csi" {{ 'checked' if cam.source == 'csi' }} {{ 'disabled' if not hw.csi and cam.source != 'csi' }}> CSI camera</label>
+      <label class="radio"><input type="radio" name="source" value="usb" {{ 'checked' if cam.source == 'usb' }} {{ 'disabled' if not hw.usb and cam.source != 'usb' }}> USB camera</label>
+    </fieldset>
+
+    <div data-show-for="csi">
+      <label>CSI camera
+        <select name="csi_index">
+          {% for c in hw.csi %}<option value="{{ c.index }}" {{ 'selected' if c.index == cam.csi_index }}>{{ c.index }}: {{ c.sensor }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="noir" {{ 'checked' if cam.noir }}>
+        Camera without infrared filter (NoIR) <small class="muted">— check it if the image looks pink or magenta in daylight</small></label>
+      <label class="check"><input type="checkbox" name="full_fov" {{ 'checked' if cam.full_fov }}>
+        Full field of view <small class="muted">— keeps the whole wide angle (some sensor modes crop the image)</small></label>
+    </div>
+
+    <div data-show-for="usb">
+      <label>USB camera
+        <select name="usb_device">
+          {% for c in hw.usb %}<option value="{{ c.path }}" {{ 'selected' if c.path == cam.usb_device }}>{{ c.name }}</option>{% endfor %}
+          {% if cam.usb_device and cam.usb_device not in hw.usb|map(attribute='path')|list %}
+            <option value="{{ cam.usb_device }}" selected>{{ cam.usb_device }} (not connected)</option>
+          {% endif %}
+        </select>
+      </label>
+      <label>Camera output format
+        <select name="usb_format">
+          <option value="h264" {{ 'selected' if cam.usb_format == 'h264' }}>H.264 (best: no encoding on the Pi)</option>
+          <option value="mjpeg" {{ 'selected' if cam.usb_format == 'mjpeg' }}>MJPEG (re-encoded by the Pi)</option>
+          <option value="yuyv" {{ 'selected' if cam.usb_format == 'yuyv' }}>YUYV raw (re-encoded, low frame rates)</option>
+        </select>
+      </label>
+      {% for c in hw.usb %}
+        <details class="small"><summary>Formats of {{ c.name }}</summary>
+          {% for fmt, sizes in c.formats.items() %}
+            <p><strong>{{ fmt|upper }}</strong>: {% for size, rates in sizes.items() %}{{ size }} ({{ rates|map('int')|join('/') }} fps){{ ', ' if not loop.last }}{% endfor %}</p>
+          {% endfor %}
+        </details>
+      {% endfor %}
+      <label class="check"><input type="checkbox" name="web_transcode" {{ 'checked' if cam.web_transcode }}>
+        Re-encode for browsers <small class="muted">— needed if the live view stays black in Firefox (cameras sending H.264 Main/High profile)</small></label>
+    </div>
+
+    <div class="row">
+      <label>Resolution
+        <select name="resolution">
+          {% for w, h in resolutions %}<option value="{{ w }}x{{ h }}" {{ 'selected' if w == cam.width and h == cam.height }}>{{ w }}×{{ h }}{{ ' (4:3)' if w * 3 == h * 4 else '' }}</option>{% endfor %}
+          {% if (cam.width, cam.height) not in resolutions %}<option value="{{ cam.width }}x{{ cam.height }}" selected>{{ cam.width }}×{{ cam.height }}</option>{% endif %}
+        </select>
+      </label>
+      <label>Frame rate
+        <select name="framerate">
+          {% for f in framerates %}<option value="{{ f }}" {{ 'selected' if f == cam.framerate }}>{{ f }} fps</option>{% endfor %}
+        </select>
+      </label>
+      <label>Bitrate (kbit/s)
+        <input type="number" name="bitrate_kbps" min="200" max="10000" step="100" value="{{ cam.bitrate_kbps }}">
+      </label>
+    </div>
+
+    <fieldset>
+      <legend>Orientation</legend>
+      <label class="radio"><input type="radio" name="rotation" value="0" {{ 'checked' if cam.rotation != 180 }}> Normal</label>
+      <label class="radio"><input type="radio" name="rotation" value="180" {{ 'checked' if cam.rotation == 180 }}> Upside down (180°)</label>
+      <label class="check"><input type="checkbox" name="hflip" {{ 'checked' if cam.hflip }}> Mirror horizontally</label>
+      <label class="check"><input type="checkbox" name="vflip" {{ 'checked' if cam.vflip }}> Flip vertically</label>
+    </fieldset>
+
+    <button type="submit" class="primary">Save and restart the stream</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>CSI camera declaration</h2>
+  <p>The Pi detects official camera modules by itself. Many third-party modules are not detected and must be
+     declared: pick the sensor printed on the module or in its description. The Pi has to reboot.</p>
+  <p class="muted small">Current boot setting:
+    {% if hw.boot_camera.overlays %}<code>{{ hw.boot_camera.overlays|join(', ') }}</code>
+    {% elif hw.boot_camera.auto_detect %}automatic detection{% else %}none{% endif %}</p>
+  <form method="post" action="{{ url_for('camera_overlay') }}" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <div class="row">
+      <label>Sensor
+        <select name="sensor">
+          <option value="auto">Automatic detection (official modules)</option>
+          {% for key, label in sensors.items() %}
+            <option value="{{ key }}" {{ 'selected' if hw.boot_camera.overlays and hw.boot_camera.overlays[0].split(',')[0] == key }}>{{ key|upper }} — {{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% if hw.pi5 %}
+      <label>Connector
+        <select name="port"><option value="">CAM1 (default)</option><option value="cam0">CAM0</option></select>
+      </label>
+      {% endif %}
+    </div>
+    <label class="check"><input type="checkbox" name="reboot" checked> Reboot now</label>
+    <button type="submit" data-confirm="Change the boot configuration{{ ' and reboot' }}?">Apply</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}<script>showForSource('camera-form');</script>{% endblock %}

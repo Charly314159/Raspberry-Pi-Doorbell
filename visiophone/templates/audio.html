@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Audio{% endblock %}
+{% block content %}
+<h1>Audio</h1>
+<section class="card">
+  <form method="post" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <h2>Microphone</h2>
+    <p class="muted">Sound of the visitor, sent with the video stream.</p>
+    <label>Device
+      <select name="microphone">
+        <option value="">None</option>
+        {% for d in capture %}<option value="{{ d.key }}" {{ 'selected' if d.key == audio.microphone }}>{{ d.label }}</option>{% endfor %}
+        {% if audio.microphone and audio.microphone not in capture|map(attribute='key')|list %}
+          <option value="{{ audio.microphone }}" selected>{{ audio.microphone }} (not connected)</option>
+        {% endif %}
+      </select>
+    </label>
+    {% if volumes.capture is not none %}
+    <label>Microphone level <output>{{ volumes.capture }}</output> %
+      <input type="range" name="capture_volume" min="0" max="100" value="{{ volumes.capture }}" oninput="this.previousElementSibling.value=this.value">
+    </label>
+    {% endif %}
+
+    <h2>Speaker</h2>
+    <p class="muted">Your voice from the browser or Home Assistant, played outside.</p>
+    <label>Device
+      <select name="speaker">
+        <option value="">None</option>
+        {% for d in playback %}<option value="{{ d.key }}" {{ 'selected' if d.key == audio.speaker }}>{{ d.label }}</option>{% endfor %}
+        {% if audio.speaker and audio.speaker not in playback|map(attribute='key')|list %}
+          <option value="{{ audio.speaker }}" selected>{{ audio.speaker }} (not connected)</option>
+        {% endif %}
+      </select>
+    </label>
+    {% if volumes.playback is not none %}
+    <label>Speaker volume <output>{{ volumes.playback }}</output> %
+      <input type="range" name="playback_volume" min="0" max="100" value="{{ volumes.playback }}" oninput="this.previousElementSibling.value=this.value">
+    </label>
+    {% endif %}
+    <div class="actions">
+      <button type="submit" class="primary">Save</button>
+      {% if audio.speaker %}<button type="button" data-post="{{ url_for('audio_test') }}">Play a test tone</button>{% endif %}
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Test both directions</h2>
+  <p>Open the <a target="_blank" rel="noopener" data-go2rtc="webrtc.html?src={{ streams.name }}_web&media=video+audio+microphone">live view with two-way audio</a>
+     and allow the microphone. Browsers only give the microphone to secure pages: on plain <code>http://</code>,
+     see the manual (“Two-way audio in a browser”).</p>
+</section>
+{% endblock %}

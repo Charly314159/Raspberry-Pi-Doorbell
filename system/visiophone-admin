@@ -1,0 +1,67 @@
+#!/bin/bash
+# Privileged actions of the Visiophone service, run through sudo.
+# Every argument is checked: this is the only command the service may run as root.
+set -euo pipefail
+
+SENSORS="imx219 imx708 imx477 imx296 imx290 imx378 imx500 ov5647 ov9281"
+BEGIN="# >>> visiophone camera (managed by the web interface)"
+END="# <<< visiophone camera"
+
+boot_config() {
+    for f in /boot/firmware/config.txt /boot/config.txt; do
+        [ -f "$f" ] && { echo "$f"; return; }
+    done
+    echo "config.txt not found" >&2
+    exit 1
+}
+
+camera_overlay() {
+    local sensor="$1" port="${2:-}"
+    if [ "$sensor" != auto ] && ! [[ " $SENSORS " == *" $sensor "* ]]; then
+        echo "Unknown sensor: $sensor" >&2; exit 2
+    fi
+    case "$port" in ""|cam0|cam1) ;; *) echo "Unknown port: $port" >&2; exit 2 ;; esac
+
+    local cfg tmp
+    cfg=$(boot_config)
+    cp "$cfg" "$cfg.visiophone-backup"
+    tmp=$(mktemp)
+    # Drop the managed block, global camera_auto_detect lines and overlays of known sensors
+    awk -v begin="$BEGIN" -v end="$END" -v sensors="$SENSORS" '
+        BEGIN { n = split(sensors, list, " "); for (i = 1; i <= n; i++) known[list[i]] = 1 }
+        $0 == begin { skip = 1; next }
+        $0 == end { skip = 0; next }
+        skip { next }
+        /^[[:space:]]*camera_auto_detect=/ { next }
+        /^[[:space:]]*dtoverlay=/ {
+            name = $0; sub(/^[[:space:]]*dtoverlay=/, "", name); sub(/[,[:space:]].*/, "", name)
+            if (name in known) next
+        }
+        { print }
+    ' "$cfg" > "$tmp"
+    {
+        echo "$BEGIN"
+        echo "[all]"
+        if [ "$sensor" = auto ]; then
+            echo "camera_auto_detect=1"
+        else
+            echo "camera_auto_detect=0"
+            echo "dtoverlay=${sensor}${port:+,$port}"
+        fi
+        echo "$END"
+    } >> "$tmp"
+    cat "$tmp" > "$cfg"
+    rm -f "$tmp"
+    sync
+    echo "Boot configuration updated: ${sensor}${port:+ on $port}"
+}
+
+case "${1:-}" in
+    restart-go2rtc) systemctl restart go2rtc ;;
+    reboot)         systemctl reboot ;;
+    poweroff)       systemctl poweroff ;;
+    alsa-store)     alsactl store ;;
+    camera-overlay) [ $# -ge 2 ] && [ $# -le 3 ] || { echo "usage: camera-overlay SENSOR|auto [cam0|cam1]" >&2; exit 2; }
+                    camera_overlay "$2" "${3:-}" ;;
+    *) echo "usage: visiophone-admin restart-go2rtc|reboot|poweroff|alsa-store|camera-overlay ..." >&2; exit 2 ;;
+esac

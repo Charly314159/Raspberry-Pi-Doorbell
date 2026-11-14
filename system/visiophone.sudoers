@@ -1,0 +1,2 @@
+# Visiophone: the service may run its admin helper only (see visiophone-admin)
+visiophone ALL=(root) NOPASSWD: /usr/local/sbin/visiophone-admin

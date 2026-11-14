@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Shutting down' if shutdown else 'Rebooting' }}{% endblock %}
+{% block main_class %}narrow{% endblock %}
+{% block content %}
+<div class="card login">
+  {% if shutdown %}
+    <h1>Shutting down</h1>
+    <p>The Pi is shutting down. Wait until its green light stops blinking before unplugging it.</p>
+  {% else %}
+    <h1>Rebooting</h1>
+    <p id="reboot-text">The Pi is rebooting. This page reloads by itself when it is back (about a minute).</p>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}{% if not shutdown %}<script>waitForReboot();</script>{% endif %}{% endblock %}

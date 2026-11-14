@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Status{% endblock %}
+{% block content %}
+<h1>Status</h1>
+{% for warning in status.warnings %}<div class="flash flash-warning">{{ warning }}</div>{% endfor %}
+
+<div class="grid">
+  <section class="card preview-card">
+    <h2>Camera</h2>
+    {% if status.stream_defined %}
+      <img class="preview" id="snapshot" src="{{ url_for('snapshot') }}" alt="Camera snapshot"
+           data-refresh="5000" onerror="this.classList.add('broken')">
+      <div class="actions">
+        <a class="button primary" target="_blank" rel="noopener"
+           data-go2rtc="webrtc.html?src={{ streams.name }}_web&media=video+audio+microphone">Live view with two-way audio</a>
+      </div>
+    {% else %}
+      <p class="muted">No camera configured. <a href="{{ url_for('camera') }}">Set up the camera</a>.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Services</h2>
+    <dl class="kv" id="services">
+      <dt>Video server (go2rtc)</dt>
+      <dd data-key="go2rtc">{% if status.metrics.go2rtc %}<span class="pill ok">running</span>{% else %}<span class="pill bad">stopped</span>{% endif %}</dd>
+      <dt>Stream clients</dt>
+      <dd data-key="clients">{{ status.stream_clients }}</dd>
+      <dt>Home Assistant (MQTT)</dt>
+      <dd data-key="mqtt">
+        {% if not status.mqtt.enabled %}<span class="pill">disabled</span>
+        {% elif status.mqtt.connected %}<span class="pill ok">connected</span>
+        {% else %}<span class="pill bad">disconnected</span> <small>{{ status.mqtt.error or '' }}</small>{% endif %}
+      </dd>
+      <dt>Button</dt>
+      <dd data-key="button">
+        {% if status.button.error %}<span class="pill bad">error</span> <small>{{ status.button.error }}</small>
+        {% else %}<span class="pill ok">ready</span>{% endif %}
+      </dd>
+      <dt>Last ring</dt>
+      <dd data-key="last-ring" data-time="{{ status.button.last or '' }}">{{ 'never since start' if not status.button.last }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>System</h2>
+    <dl class="kv" id="metrics">
+      <dt>Board</dt><dd>{{ model }}</dd>
+      <dt>Address</dt><dd>{{ ip }}</dd>
+      <dt>CPU temperature</dt><dd data-key="cpu_temperature">{{ status.metrics.cpu_temperature }} °C</dd>
+      <dt>CPU load</dt><dd data-key="cpu_load">{{ status.metrics.cpu_load }} %</dd>
+      <dt>Memory used</dt><dd data-key="memory_used">{{ status.metrics.memory_used }} %</dd>
+      <dt>Disk used</dt><dd data-key="disk_used">{{ status.metrics.disk_used }} %</dd>
+      {% if status.metrics.under_voltage_since_boot is not none %}
+      <dt>Power supply</dt>
+      <dd data-key="power">{% if status.metrics.under_voltage %}<span class="pill bad">under-voltage</span>
+        {% elif status.metrics.under_voltage_since_boot %}<span class="pill warn">dips since boot</span>
+        {% else %}<span class="pill ok">OK</span>{% endif %}</dd>
+      {% endif %}
+      <dt>Running since</dt><dd data-time="{{ status.metrics.boot_time }}" data-format="since"></dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Stream addresses</h2>
+    <dl class="kv stacked">
+      <dt>RTSP (Home Assistant, Frigate, VLC)</dt>
+      <dd><code>rtsp://{{ ip }}:8554/{{ streams.name }}</code></dd>
+      <dt>RTSP for browsers</dt>
+      <dd><code>rtsp://{{ ip }}:8554/{{ streams.name }}_web</code></dd>
+      <dt>go2rtc interface</dt>
+      <dd><a data-go2rtc="" target="_blank" rel="noopener">http://{{ ip }}:1984</a></dd>
+    </dl>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script>startStatusRefresh();</script>{% endblock %}

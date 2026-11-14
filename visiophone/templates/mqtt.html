@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Home Assistant{% endblock %}
+{% block content %}
+<h1>Home Assistant</h1>
+<p>The doorbell talks to Home Assistant through an MQTT broker (for example the Mosquitto add-on).
+   Home Assistant then creates the device and its entities by itself.</p>
+<p>Status:
+  {% if not mqtt.enabled %}<span class="pill">disabled</span>
+  {% elif connected %}<span class="pill ok">connected</span>
+  {% else %}<span class="pill bad">not connected</span> {{ error or '' }}{% endif %}
+</p>
+<section class="card">
+  <form method="post" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label class="check"><input type="checkbox" name="enabled" {{ 'checked' if mqtt.enabled }}> Connect to Home Assistant</label>
+    <div class="row">
+      <label>Broker address <input name="host" value="{{ mqtt.host }}" placeholder="192.168.1.10 or homeassistant.local"></label>
+      <label>Port <input type="number" name="port" min="1" max="65535" value="{{ mqtt.port }}"></label>
+    </div>
+    <div class="row">
+      <label>User name <input name="username" value="{{ mqtt.username }}" autocomplete="off"></label>
+      <label>Password <input type="password" name="password" autocomplete="new-password"
+             placeholder="{{ 'unchanged' if mqtt.password else '' }}"></label>
+    </div>
+    {% if mqtt.password %}<label class="check"><input type="checkbox" name="clear_password"> Remove the stored password</label>{% endif %}
+    <details>
+      <summary>Advanced</summary>
+      <div class="row">
+        <label>Device name <input name="device_name" value="{{ device.name }}"></label>
+        <label>Device ID <input name="device_id" value="{{ device.id }}" pattern="[A-Za-z0-9_]+" required></label>
+      </div>
+      <p class="muted small">The device ID prefixes MQTT topics and entity IDs (<code>event.{{ device.id }}_doorbell</code>).
+         Changing it creates new entities in Home Assistant.</p>
+      <div class="row">
+        <label>Discovery prefix <input name="discovery_prefix" value="{{ mqtt.discovery_prefix }}"></label>
+        <label>Status interval (s) <input type="number" name="status_interval_s" min="10" max="3600" value="{{ mqtt.status_interval_s }}"></label>
+      </div>
+    </details>
+    <button type="submit" class="primary">Save and connect</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Entities created</h2>
+  <table>
+    <tr><th>Entity</th><th>Use</th></tr>
+    <tr><td><code>event.{{ device.id }}_doorbell</code></td><td>Fires on each ring: trigger your automations on it</td></tr>
+    <tr><td><code>light.{{ device.id }}_led</code></td><td>Button LED ring (when enabled)</td></tr>
+    <tr><td><code>button.{{ device.id }}_restart_stream</code>, <code>_reboot</code>, <code>_shutdown</code></td><td>Maintenance</td></tr>
+    <tr><td><code>sensor.{{ device.id }}_cpu_temperature</code>, …</td><td>Diagnostics</td></tr>
+  </table>
+  <p class="muted small">The camera itself is added in Home Assistant with the go2rtc or Generic Camera integration (see the manual).</p>
+</section>
+{% endblock %}
