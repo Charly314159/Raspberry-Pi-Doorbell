@@ -74,3 +74,31 @@ def test_led_effects():
     io.set_led(on=False)
     assert io._led.value == 0
     io.close()
+
+
+def test_led_effects_peak_at_brightness():
+    import time
+    from gpiozero import Device
+    from gpiozero.pins.mock import MockFactory, MockPWMPin
+    Device.pin_factory = MockFactory(pin_class=MockPWMPin)
+    from visiophone.gpio import DoorbellIO
+    io = DoorbellIO(lambda: None)
+    io.configure({"enabled": False, "gpio": 17, "pull_up": True, "debounce_ms": 50, "min_interval_s": 0},
+                 {"enabled": True, "gpio": 27, "on_at_start": True, "brightness": 51,
+                  "blink_on_ring": True, "blink_duration_s": 1})
+    peak = 51 / 255
+    seen = []
+    io.set_led(effect="fast_blink")
+    for _ in range(40):
+        seen.append(io._led.value)
+        time.sleep(0.01)
+    assert max(seen) <= peak + 1e-6 and max(seen) > 0
+    seen.clear()
+    io.set_led(effect="breathe")
+    for _ in range(150):
+        seen.append(io._led.value)
+        time.sleep(0.01)
+    assert max(seen) <= peak + 1e-6 and min(seen) < peak / 2
+    io.set_led(effect="none")
+    assert abs(io._led.value - peak) < 1e-6
+    io.close()

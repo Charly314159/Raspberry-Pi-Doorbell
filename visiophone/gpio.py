@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 BLINK_PERIOD_S = 0.5
 # LED effects, selectable from Home Assistant: (on_time, off_time) for blinks,
-# fade time for breathing
+# (fade in, fade out) for breathing. Every effect peaks at the chosen brightness.
 EFFECTS = {
     "none": None,
     "blink": ("blink", 0.5, 0.5),
@@ -23,6 +23,8 @@ class DoorbellIO:
         self._button = None
         self._led = None
         self._restore_timer = None
+        self._anim_stop = None
+        self._anim_thread = None
         self.button_cfg = {}
         self.led_cfg = {}
         self.button_error = None
@@ -68,6 +70,7 @@ class DoorbellIO:
             if self._restore_timer:
                 self._restore_timer.cancel()
                 self._restore_timer = None
+            self._stop_animation()
             for device in (self._button, self._led):
                 if device is not None:
                     try:
@@ -100,6 +103,52 @@ class DoorbellIO:
 
     # --- LED ----------------------------------------------------------------
 
+    # gpiozero's own blink() and pulse() always go up to full power: the
+    # animations below are ours, so that they peak at the chosen brightness.
+
+    def _stop_animation(self):
+        if self._anim_stop is not None:
+            self._anim_stop.set()
+        if self._anim_thread is not None and self._anim_thread is not threading.current_thread():
+            self._anim_thread.join(1)
+        self._anim_stop = self._anim_thread = None
+
+    def _animate(self, kind, first, second, cycles=None):
+        """Run an effect in the background: kind 'blink' (on/off times) or
+        'pulse' (fade in/out times), forever or for a number of cycles."""
+        self._stop_animation()
+        led = self._led
+        if led is None:
+            return
+        stop = threading.Event()
+
+        def run():
+            done = 0
+            while not stop.is_set() and (cycles is None or done < cycles):
+                peak = self.led_brightness / 255     # read each cycle: follows brightness changes
+                try:
+                    if kind == "blink":
+                        led.value = peak
+                        if stop.wait(first):
+                            return
+                        led.value = 0
+                        if stop.wait(second):
+                            return
+                    else:
+                        for fade, levels in ((first, range(1, 41)), (second, range(39, -1, -1))):
+                            for level in levels:
+                                # Quadratic curve: looks even to the eye, unlike a linear ramp
+                                led.value = peak * (level / 40) ** 2
+                                if stop.wait(fade / 40):
+                                    return
+                except Exception:   # LED closed while animating
+                    return
+                done += 1
+
+        self._anim_stop = stop
+        self._anim_thread = threading.Thread(target=run, name="led-effect", daemon=True)
+        self._anim_thread.start()
+
     def _apply_led(self):
         """Drive the LED from the steady state: off, on, or an effect."""
         led = self._led
@@ -107,11 +156,10 @@ class DoorbellIO:
             return
         effect = EFFECTS.get(self.led_effect) if self.led_on else None
         if effect is None:
+            self._stop_animation()
             led.value = self.led_brightness / 255 if self.led_on else 0
-        elif effect[0] == "blink":
-            led.blink(on_time=effect[1], off_time=effect[2], background=True)
         else:
-            led.pulse(fade_in_time=effect[1], fade_out_time=effect[2], background=True)
+            self._animate(*effect)
 
     def _notify(self):
         for listener in list(self.led_listeners):
@@ -148,7 +196,7 @@ class DoorbellIO:
             if self._restore_timer:
                 self._restore_timer.cancel()
             half = BLINK_PERIOD_S / 2
-            led.blink(on_time=half, off_time=half, n=max(1, int(duration_s / BLINK_PERIOD_S)), background=True)
+            self._animate("blink", half, half, cycles=max(1, int(duration_s / BLINK_PERIOD_S)))
             self._restore_timer = threading.Timer(duration_s, self._restore)
             self._restore_timer.daemon = True
             self._restore_timer.start()
