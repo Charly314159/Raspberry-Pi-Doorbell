@@ -7,7 +7,7 @@ systemctl disable --now visiophone.service go2rtc.service 2>/dev/null || true
 rm -f /etc/systemd/system/visiophone.service /etc/systemd/system/go2rtc.service
 systemctl daemon-reload
 rm -rf /opt/visiophone
-rm -f /usr/local/sbin/visiophone-admin /usr/local/bin/visiophone-passwd /etc/sudoers.d/visiophone
+rm -f /usr/local/sbin/visiophone-admin /usr/local/bin/visiophone-passwd /usr/local/bin/visiophone-speaker /etc/sudoers.d/visiophone
 
 if [ "${1:-}" = "--purge" ]; then
     rm -rf /etc/visiophone /var/lib/visiophone /usr/local/bin/go2rtc

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Speaker relay run by go2rtc for two-way audio: plays the browser's voice and
+# reports its level to the Visiophone service (LED "follow the sound").
+export PYTHONPATH=/opt/visiophone:/opt/visiophone/vendor
+exec /usr/bin/python3 -m visiophone.sound relay "$@"

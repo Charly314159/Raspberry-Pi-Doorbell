@@ -41,6 +41,8 @@
     </label>
     <label class="check"><input type="checkbox" name="blink_on_ring" {{ 'checked' if led.blink_on_ring }}> Blink after a ring</label>
     <label>Blink duration (s) <input type="number" name="blink_duration_s" min="1" max="120" value="{{ led.blink_duration_s }}"></label>
+    <label class="check"><input type="checkbox" name="follow_sound" {{ 'checked' if led.follow_sound }}>
+      Follow the sound <small class="muted">— while the doorbell speaks (voice messages, your voice from the browser), the LED follows the volume, then returns to its state</small></label>
     <p class="muted small">A GPIO gives 3.3 V and a few mA only. Above 10 mA, drive the LED through a transistor (see the manual).</p>
     {% if led.enabled %}
     <div class="actions">
@@ -48,6 +50,7 @@
       <button type="button" data-post="{{ url_for('api_led') }}" data-action="off">Off</button>
       <button type="button" data-post="{{ url_for('api_led') }}" data-action="blink">Blink</button>
       <button type="button" data-post="{{ url_for('api_led') }}" data-action="breathe">Breathe</button>
+      <button type="button" data-post="{{ url_for('api_led') }}" data-action="sound">Sound</button>
     </div>
     {% endif %}
   </section>

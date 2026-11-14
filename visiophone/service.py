@@ -8,6 +8,7 @@ from . import go2rtc, hardware, system
 from .config import Config
 from .gpio import DoorbellIO
 from .mqtt import MqttBridge
+from .sound import SoundLevels
 
 log = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class Visiophone:
         self.io = DoorbellIO(self.on_ring)
         self.io.led_listeners.append(lambda: self.mqtt.publish_led())
         self.mqtt = MqttBridge(self)
+        self.sound = SoundLevels(self.io.feed_sound)
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._apply_lock = threading.Lock()
@@ -128,11 +130,13 @@ class Visiophone:
             log.warning("Streams: %s", warning)
         self.apply_io()
         self.apply_mqtt()
+        self.sound.start()
         threading.Thread(target=self._status_loop, name="status", daemon=True).start()
         threading.Thread(target=self._live_view_loop, name="live-view", daemon=True).start()
 
     def stop(self):
         self._stop.set()
         self._wake.set()
+        self.sound.stop()
         self.mqtt.stop()
         self.io.close()

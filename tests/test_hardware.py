@@ -102,3 +102,36 @@ def test_led_effects_peak_at_brightness():
     io.set_led(effect="none")
     assert abs(io._led.value - peak) < 1e-6
     io.close()
+
+
+def test_sound_levels():
+    import struct
+    from visiophone import sound
+    assert sound.level_from_s16le(b"\x00\x00" * 320) == 0.0
+    loud = struct.pack("<320h", *([12000, -12000] * 160))
+    assert sound.level_from_s16le(loud) > 0.9
+    quiet = struct.pack("<320h", *([400, -400] * 160))
+    assert 0 < sound.level_from_s16le(quiet) < 0.3
+    assert sound.ALAW_TABLE[0xD5] in (8, -8)          # A-law silence
+    assert sound.level_from_alaw(bytes([0xD5]) * 320) == 0.0
+
+
+def test_led_follows_sound():
+    import time
+    from gpiozero import Device
+    from gpiozero.pins.mock import MockFactory, MockPWMPin
+    Device.pin_factory = MockFactory(pin_class=MockPWMPin)
+    from visiophone import gpio
+    gpio.SOUND_SILENCE_S = 0.3
+    io = gpio.DoorbellIO(lambda: None)
+    io.configure({"enabled": False, "gpio": 17, "pull_up": True, "debounce_ms": 50, "min_interval_s": 0},
+                 {"enabled": True, "gpio": 27, "on_at_start": False, "brightness": 200,
+                  "blink_on_ring": True, "blink_duration_s": 1, "follow_sound": True})
+    assert io._led.value == 0
+    io.feed_sound(0.8)
+    time.sleep(0.1)
+    assert 0.5 < io._led.value <= 200 / 255 + 1e-6
+    io.feed_sound(0.0)
+    time.sleep(1.2)                       # silence: back to the steady state (off)
+    assert io._led.value == 0 and not io._following_sound
+    io.close()

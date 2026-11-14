@@ -78,6 +78,7 @@ find "$PREFIX" -name __pycache__ -prune -exec rm -rf {} +
 chown -R root:root "$PREFIX"
 install -m 0755 "$SRC/system/visiophone-admin" /usr/local/sbin/visiophone-admin
 install -m 0755 "$SRC/system/visiophone-passwd" /usr/local/bin/visiophone-passwd
+install -m 0755 "$SRC/system/visiophone-speaker" /usr/local/bin/visiophone-speaker
 
 install -m 0440 "$SRC/system/visiophone.sudoers" /tmp/visiophone.sudoers
 visudo -cf /tmp/visiophone.sudoers >/dev/null || die "invalid sudoers file"

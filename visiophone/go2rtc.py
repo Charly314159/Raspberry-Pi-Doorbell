@@ -19,6 +19,8 @@ GO2RTC_CONFIG = os.path.join(CONFIG_DIR, "go2rtc.yaml")
 API_URL = "http://127.0.0.1:1984"
 RTSP_PORT = 8554
 KILL = "#killsignal=15#killtimeout=5"
+# Plays the browser's voice and reports its level to the service (see sound.py)
+SPEAKER_RELAY = "/usr/local/bin/visiophone-speaker"
 
 
 def _local_rtsp(streams_cfg, name):
@@ -190,7 +192,11 @@ def build(cfg, hw):
         else:
             web.append(_local_rtsp(streams_cfg, name))
         if speaker:
-            web.append(f"alsa:device?audio={speaker}")
+            if audio.get("speaker_relay", True):
+                card_id, dev = audio["speaker"].rsplit(",", 1)
+                web.append(f"exec:{SPEAKER_RELAY} --device plughw:CARD={card_id},DEV={dev}#backchannel=1")
+            else:
+                web.append(f"alsa:device?audio={speaker}")
         streams[f"{name}_web"] = web
     else:
         warnings.append("No camera and no microphone configured: no stream is published.")

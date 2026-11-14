@@ -13,7 +13,10 @@ EFFECTS = {
     "blink": ("blink", 0.5, 0.5),
     "fast_blink": ("blink", 0.15, 0.15),
     "breathe": ("pulse", 1.2, 1.2),
+    "sound": ("sound", 0, 0),       # follows the level of what the doorbell plays
 }
+SOUND_RELEASE = 0.85                # level decay per 40 ms frame (smooth fall)
+SOUND_SILENCE_S = 1.5               # "follow the sound" ends after this much silence
 
 
 class DoorbellIO:
@@ -35,6 +38,9 @@ class DoorbellIO:
         self.led_on = False
         self.led_brightness = 255
         self.led_effect = "none"
+        self.sound_level = 0.0
+        self._sound_at = 0.0          # monotonic time of the last audible level
+        self._following_sound = False
         self.led_listeners = []       # callables notified when the LED state changes
 
     # --- Configuration ------------------------------------------------------
@@ -124,9 +130,22 @@ class DoorbellIO:
 
         def run():
             done = 0
-            while not stop.is_set() and (cycles is None or done < cycles):
+            while not stop.is_set() and (cycles is None or cycles == 0 or done < cycles):
                 peak = self.led_brightness / 255     # read each cycle: follows brightness changes
                 try:
+                    if kind == "sound":
+                        shown = 0.0
+                        while not stop.is_set():
+                            shown = max(self.sound_level, shown * SOUND_RELEASE)
+                            led.value = self.led_brightness / 255 * shown
+                            quiet = time.monotonic() - self._sound_at > SOUND_SILENCE_S
+                            if cycles == 0 and quiet and shown < 0.01:
+                                # "follow the sound" overlay: hand back to the steady state
+                                threading.Thread(target=self._end_sound_overlay, daemon=True).start()
+                                return
+                            if stop.wait(0.04):
+                                return
+                        return
                     if kind == "blink":
                         led.value = peak
                         if stop.wait(first):
@@ -149,11 +168,31 @@ class DoorbellIO:
         self._anim_thread = threading.Thread(target=run, name="led-effect", daemon=True)
         self._anim_thread.start()
 
+    def feed_sound(self, level):
+        """New sound level (0..1) from the speaker relay or the sound FIFO."""
+        self.sound_level = level
+        if level > 0.02:
+            self._sound_at = time.monotonic()
+            follow = self.led_cfg.get("follow_sound") and self.led_effect != "sound"
+            if follow and not self._following_sound and self._led is not None and self._restore_timer is None:
+                with self._lock:
+                    self._following_sound = True
+                    log.info("LED follows the sound")
+                    # cycles=0 marks the overlay: it ends by itself after a silence
+                    self._animate("sound", 0, 0, cycles=0)
+
+    def _end_sound_overlay(self):
+        with self._lock:
+            if self._following_sound:
+                self._following_sound = False
+                self._apply_led()
+
     def _apply_led(self):
         """Drive the LED from the steady state: off, on, or an effect."""
         led = self._led
         if led is None:
             return
+        self._following_sound = False
         effect = EFFECTS.get(self.led_effect) if self.led_on else None
         if effect is None:
             self._stop_animation()

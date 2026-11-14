@@ -181,6 +181,25 @@ If the visitor hears themselves, the microphone picks up the speaker. Move them 
 | **Minimum time between rings** | An impatient visitor pressing ten times only rings once in this delay. |
 | **LED: on at start, brightness** | Steady state of the ring. Home Assistant can change it at any time. |
 | **Blink after a ring** | Shows the visitor that the press was taken into account. |
+| **Follow the sound** | While the doorbell speaks (voice messages, your voice from the browser), the LED follows the volume, then returns to its previous state. See *LED and sound* below. |
+
+### LED and sound
+
+The LED can follow the volume of what the doorbell plays, with the **Follow the sound** option or the `sound` effect (the LED then only lights with the sound). Effects never exceed the brightness you set.
+
+- **Your voice from the browser** goes through Visiophone's speaker relay, which measures its level: nothing to set up.
+- **Voice messages played by MPD** (text-to-speech from Home Assistant) need a second MPD output that copies the sound for Visiophone. Add to the MPD configuration, then restart MPD:
+
+```
+audio_output {
+	type		"fifo"
+	name		"Visiophone LED"
+	path		"/run/visiophone/sound.fifo"
+	format		"8000:16:1"
+}
+```
+
+Any other player can feed the same FIFO with raw signed 16-bit mono 8 kHz audio.
 
 The grey dot turns green while the button is held: use it to check the wiring. **Simulate a ring** sends a ring to Home Assistant without touching the button.
 
@@ -199,7 +218,7 @@ A **Doorbell** device appears in Settings → Devices → MQTT.
 | Entity | Use |
 |--------|-----|
 | `event.visiophone_doorbell` | Fires `press` on each ring. |
-| `light.visiophone_led` | LED ring, with brightness and effects (`blink`, `fast_blink`, `breathe`), when the LED is enabled. |
+| `light.visiophone_led` | LED ring, with brightness and effects (`blink`, `fast_blink`, `breathe`, `sound`), when the LED is enabled. |
 | `binary_sensor.visiophone_live_view` | On while someone watches the live view in a browser (go2rtc page, Advanced Camera Card). RTSP clients (recordings, Frigate) do not count. |
 | `button.visiophone_answer` | Tells the doorbell somebody answers: stops the LED blinking and cancels the video message. |
 | `button.visiophone_restart_stream`, `_reboot`, `_shutdown` | Maintenance. |
@@ -325,7 +344,7 @@ conditions:
 
 Clips are saved in `/media/visiophone/` and appear in **Media → My media**. Delete old ones from time to time.
 
-The LED light has the effects `none` (steady), `blink`, `fast_blink` and `breathe`, usable in your own automations too:
+The LED light has the effects `none` (steady), `blink`, `fast_blink`, `breathe` and `sound` (follows the volume of what the doorbell plays), usable in your own automations too:
 
 ```yaml
 - action: light.turn_on
@@ -400,6 +419,7 @@ journalctl -u visiophone -u go2rtc -f
 | `/etc/visiophone/config.yaml` | Configuration (written by the web interface). |
 | `/etc/visiophone/go2rtc.yaml` | go2rtc configuration, generated: do not edit. |
 | `/opt/visiophone/` | Program. |
+| `/usr/local/bin/visiophone-speaker` | Speaker relay started by go2rtc for two-way audio (plays your voice, measures its level). |
 | `/usr/local/sbin/visiophone-admin` | Privileged actions (reboot, camera declaration…), the only command the service may run as root. |
 | `/var/lib/visiophone/` | Cache (camera modes). |
 

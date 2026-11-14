@@ -338,6 +338,7 @@ def create_app(service):
                     "brightness": form_int("brightness", 1, 255),
                     "blink_on_ring": checked("blink_on_ring"),
                     "blink_duration_s": form_int("blink_duration_s", 1, 120),
+                    "follow_sound": checked("follow_sound"),
                 }
                 if button_values["enabled"] and led_values["enabled"] and \
                         button_values["gpio"] == led_values["gpio"]:
@@ -363,8 +364,8 @@ def create_app(service):
             service.io.blink(cfg.section("led")["blink_duration_s"])
         elif action in ("on", "off"):
             service.io.set_led(on=action == "on", effect="none" if action == "on" else None)
-        elif action == "breathe":
-            service.io.set_led(effect="breathe")
+        elif action in ("breathe", "sound"):
+            service.io.set_led(effect=action)
         elif action == "ring":
             service.io._pressed()
         else:

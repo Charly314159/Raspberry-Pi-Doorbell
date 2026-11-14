@@ -53,6 +53,10 @@ DEFAULTS = {
     "audio": {
         "microphone": "",          # ALSA "card_id,device", e.g. "Device,0"; empty = none
         "speaker": "",
+        # Play the browser's voice through Visiophone's relay, which also
+        # measures its level for the LED ("follow the sound"); off = go2rtc
+        # writes straight to the sound card.
+        "speaker_relay": True,
     },
     "streams": {
         "name": "doorbell",
@@ -76,6 +80,7 @@ DEFAULTS = {
         "brightness": 255,         # 1-255
         "blink_on_ring": True,
         "blink_duration_s": 10,
+        "follow_sound": False,     # the LED follows the sound while the doorbell speaks
     },
     "mqtt": {
         "enabled": False,
