@@ -40,6 +40,32 @@ def pick_sensor_mode(modes, width, height, fps, full_fov):
     return min(candidates, key=lambda m: m["width"] * m["height"])
 
 
+IMAGE_DEFAULTS = {"brightness": 0.0, "contrast": 1.0, "saturation": 1.0, "sharpness": 1.0, "ev": 0.0,
+                  "metering": "centre", "awb": "auto", "denoise": "auto"}
+AWB_MODES = ("auto", "incandescent", "tungsten", "fluorescent", "indoor", "daylight", "cloudy", "manual")
+METERING_MODES = ("centre", "spot", "average")
+DENOISE_MODES = ("auto", "off", "cdn_off", "cdn_fast", "cdn_hq")
+
+
+def image_args(cam):
+    """rpicam options for the image settings that differ from the defaults."""
+    args = []
+    for key in ("brightness", "contrast", "saturation", "sharpness", "ev"):
+        value = float(cam.get(key, IMAGE_DEFAULTS[key]))
+        if abs(value - IMAGE_DEFAULTS[key]) > 1e-6:
+            args.append(f"--{key} {value:g}")
+    if cam.get("metering", "centre") != "centre":
+        args.append(f"--metering {cam['metering']}")
+    awb = cam.get("awb", "auto")
+    if awb == "manual":
+        args.append(f"--awbgains {float(cam['awb_red']):g},{float(cam['awb_blue']):g}")
+    elif awb != "auto":
+        args.append(f"--awb {awb}")
+    if cam.get("denoise", "auto") != "auto":
+        args.append(f"--denoise {cam['denoise']}")
+    return args
+
+
 def _encoder_args(hw, cam):
     fps = cam["framerate"]
     if hw["hw_encoder"]:
@@ -86,6 +112,7 @@ def video_source(cam, hw, warnings):
             args.append("--hflip")
         if cam["vflip"]:
             args.append("--vflip")
+        args.extend(image_args(cam))
         args.append(f"--width {cam['width']} --height {cam['height']} --framerate {cam['framerate']}")
         args.append(_encoder_args(hw, cam))
         args.append("-o -")

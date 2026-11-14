@@ -65,3 +65,15 @@ def test_live_viewers_ignores_rtsp():
     }
     assert go2rtc.live_viewers(streams) == 2
     assert go2rtc.live_viewers(None) == 0
+
+
+def test_image_args(config, hw, monkeypatch):
+    assert go2rtc.image_args(config.section("camera")) == []
+    config.update("camera", {"source": "csi", "brightness": 0.1, "saturation": 1.3, "ev": -0.5,
+                             "awb": "manual", "awb_red": 1.8, "awb_blue": 1.2, "denoise": "cdn_hq"})
+    args = go2rtc.image_args(config.section("camera"))
+    assert args == ["--brightness 0.1", "--saturation 1.3", "--ev -0.5", "--awbgains 1.8,1.2", "--denoise cdn_hq"]
+    data, _ = render(config, hw, monkeypatch)
+    assert "--awbgains 1.8,1.2" in data["streams"]["doorbell"][0]
+    config.update("camera", {"awb": "indoor"})
+    assert "--awb indoor" in go2rtc.image_args(config.section("camera"))

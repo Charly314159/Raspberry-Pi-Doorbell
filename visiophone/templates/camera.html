@@ -128,6 +128,61 @@
   </form>
 </section>
 
+{% if cam.source == 'csi' %}
+<section class="card" id="image">
+  <h2>Image</h2>
+  <p class="muted">Applied when saved: the stream restarts for a few seconds and the preview above shows the result.</p>
+  {% macro slider(name, label, min, max, step, hint='') %}
+    <label>{{ label }} <output>{{ '%g' % cam[name] }}</output>{% if hint %} <small class="muted">— {{ hint }}</small>{% endif %}
+      <input type="range" name="{{ name }}" min="{{ min }}" max="{{ max }}" step="{{ step }}" value="{{ cam[name] }}"
+             oninput="this.parentElement.querySelector('output').value=this.value">
+    </label>
+  {% endmacro %}
+  <form method="post" action="{{ url_for('camera_image') }}" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <div class="row">
+      <div>
+        {{ slider('brightness', 'Brightness', -1, 1, 0.05, 'normal 0') }}
+        {{ slider('contrast', 'Contrast', 0, 2, 0.05, 'normal 1') }}
+        {{ slider('saturation', 'Saturation', 0, 2, 0.05, 'normal 1, 0 = black and white') }}
+        {{ slider('sharpness', 'Sharpness', 0, 2, 0.05, 'normal 1') }}
+      </div>
+      <div>
+        {{ slider('ev', 'Exposure compensation (EV)', -4, 4, 0.25, 'brighter or darker overall, normal 0') }}
+        <label>Exposure metering
+          <select name="metering">
+            {% for m in metering_modes %}<option value="{{ m }}" {{ 'selected' if cam.metering == m }}>{{ {'centre': 'Centre-weighted (default)', 'spot': 'Spot (centre only)', 'average': 'Average (whole image)'}[m] }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Noise reduction
+          <select name="denoise">
+            {% for m in denoise_modes %}<option value="{{ m }}" {{ 'selected' if cam.denoise == m }}>{{ {'auto': 'Automatic (default)', 'off': 'Off', 'cdn_off': 'Spatial only', 'cdn_fast': 'Fast', 'cdn_hq': 'High quality (more CPU)'}[m] }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+    </div>
+    <fieldset>
+      <legend>White balance</legend>
+      <label>Mode
+        <select name="awb" id="awb-mode">
+          {% for m in awb_modes %}<option value="{{ m }}" {{ 'selected' if cam.awb == m }}>{{ {'auto': 'Automatic (default)', 'incandescent': 'Incandescent', 'tungsten': 'Tungsten', 'fluorescent': 'Fluorescent', 'indoor': 'Indoor', 'daylight': 'Daylight', 'cloudy': 'Cloudy', 'manual': 'Manual gains'}[m] }}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="row" id="awb-gains">
+        <div>{{ slider('awb_red', 'Red gain', 0.5, 4, 0.05, 'more = redder') }}</div>
+        <div>{{ slider('awb_blue', 'Blue gain', 0.5, 4, 0.05, 'more = bluer') }}</div>
+      </div>
+      <p class="muted small">Image greenish or pink? Try another mode, or Manual gains while watching the preview.
+         Sensors without an infrared filter (NoIR) never have perfectly natural colours in daylight.</p>
+    </fieldset>
+    <div class="actions">
+      <button type="submit" class="primary">Apply</button>
+      <button type="submit" name="reset" value="1">Back to defaults</button>
+    </div>
+  </form>
+</section>
+{% endif %}
+
 <section class="card">
   <h2>CSI camera declaration</h2>
   <p>The Pi detects official camera modules by itself. Many third-party modules are not detected and must be
@@ -157,4 +212,13 @@
   </form>
 </section>
 {% endblock %}
-{% block scripts %}<script>showForSource('camera-form');</script>{% endblock %}
+{% block scripts %}<script>
+showForSource('camera-form');
+const awbMode = document.getElementById('awb-mode');
+if (awbMode) {
+  const gains = document.getElementById('awb-gains');
+  const update = () => { gains.hidden = awbMode.value !== 'manual'; };
+  awbMode.addEventListener('change', update);
+  update();
+}
+</script>{% endblock %}

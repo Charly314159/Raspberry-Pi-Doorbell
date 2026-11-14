@@ -209,7 +209,38 @@ def create_app(service):
             return redirect(url_for("camera"))
         return render_template("camera.html", cam=cfg.section("camera"), hw=service.hw or service.rescan(),
                                sensors=hardware.KNOWN_SENSORS, resolutions=RESOLUTIONS, framerates=FRAMERATES,
+                               awb_modes=go2rtc.AWB_MODES, metering_modes=go2rtc.METERING_MODES,
+                               denoise_modes=go2rtc.DENOISE_MODES,
                                streams=cfg.section("streams"))
+
+    @app.route("/camera/image", methods=["POST"])
+    @login_required
+    def camera_image():
+        if request.form.get("reset"):
+            values = dict(go2rtc.IMAGE_DEFAULTS, awb_red=1.5, awb_blue=1.5)
+        else:
+            try:
+                values = {
+                    "brightness": form_float("brightness", -1, 1),
+                    "contrast": form_float("contrast", 0, 2),
+                    "saturation": form_float("saturation", 0, 2),
+                    "sharpness": form_float("sharpness", 0, 2),
+                    "ev": form_float("ev", -4, 4),
+                    "awb_red": form_float("awb_red", 0.5, 4),
+                    "awb_blue": form_float("awb_blue", 0.5, 4),
+                }
+                for key, allowed in (("metering", go2rtc.METERING_MODES), ("awb", go2rtc.AWB_MODES),
+                                     ("denoise", go2rtc.DENOISE_MODES)):
+                    value = request.form.get(key, "")
+                    if value not in allowed:
+                        raise ValueError(f"{key}: unknown value")
+                    values[key] = value
+            except ValueError as e:
+                flash(str(e), "error")
+                return redirect(url_for("camera") + "#image")
+        cfg.update("camera", values)
+        report("Image settings applied.", service.apply_streams())
+        return redirect(url_for("camera") + "#image")
 
     @app.route("/camera/rescan", methods=["POST"])
     @login_required

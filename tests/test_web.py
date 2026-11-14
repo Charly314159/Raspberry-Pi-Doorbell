@@ -95,3 +95,24 @@ def test_password_change(client):
     client.post("/system/password", data={"csrf": token, "current": "secret123", "new": "newpass99", "confirm": "newpass99"})
     client.post("/logout", data={"csrf": token})
     assert client.post("/login", data={"password": "newpass99"}).status_code == 302
+
+
+def test_image_settings(client, tmp_path):
+    login(client)
+    client.service.cfg.update("camera", {"source": "csi"})
+    token = csrf(client, "/camera")
+    resp = client.post("/camera/image", data={"csrf": token, "brightness": "0.2", "contrast": "1", "saturation": "1.2",
+                                              "sharpness": "1", "ev": "0.5", "metering": "average", "awb": "indoor",
+                                              "awb_red": "1.5", "awb_blue": "1.5", "denoise": "auto"})
+    assert resp.status_code == 302
+    text = (tmp_path / "go2rtc.yaml").read_text()
+    assert "--brightness 0.2" in text and "--awb indoor" in text and "--metering average" in text
+    client.post("/camera/image", data={"csrf": token, "reset": "1"})
+    assert "--brightness" not in (tmp_path / "go2rtc.yaml").read_text()
+
+
+def test_camera_page_with_csi(client):
+    login(client)
+    client.service.cfg.update("camera", {"source": "csi", "awb": "manual"})
+    html = client.get("/camera").get_data(as_text=True)
+    assert 'id="image"' in html and 'name="awb_red"' in html and "Manual gains" in html

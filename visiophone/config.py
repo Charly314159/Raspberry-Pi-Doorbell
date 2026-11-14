@@ -38,6 +38,17 @@ DEFAULTS = {
         "noir": False,             # CSI only: tuning for sensors without IR filter
         "full_fov": True,          # CSI only: use a sensor mode covering the whole sensor
         "web_transcode": False,    # re-encode for browsers (USB cameras with Main/High profile)
+        # Image tuning (CSI cameras): neutral values add nothing to the command line
+        "brightness": 0.0,         # -1.0 .. 1.0
+        "contrast": 1.0,           # 0 .. 2
+        "saturation": 1.0,         # 0 .. 2 (0 = black and white)
+        "sharpness": 1.0,          # 0 .. 2
+        "ev": 0.0,                 # exposure compensation, -4 .. 4
+        "metering": "centre",      # centre | spot | average
+        "awb": "auto",             # auto | incandescent | tungsten | fluorescent | indoor | daylight | cloudy | manual
+        "awb_red": 1.5,            # manual white balance gains
+        "awb_blue": 1.5,
+        "denoise": "auto",         # auto | off | cdn_off | cdn_fast | cdn_hq
     },
     "audio": {
         "microphone": "",          # ALSA "card_id,device", e.g. "Device,0"; empty = none

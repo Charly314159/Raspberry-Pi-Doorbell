@@ -140,6 +140,21 @@ This edits a block in `/boot/firmware/config.txt` marked `visiophone camera`; a 
 
 Saving restarts the video server: viewers are disconnected for a few seconds.
 
+### Image (CSI cameras)
+
+Adjust the picture while watching the preview; each **Apply** restarts the stream for a few seconds.
+
+| Setting | Notes |
+|---------|-------|
+| **Brightness** | Shifts all tones; prefer **Exposure compensation** for a too dark or too bright image. |
+| **Contrast**, **Saturation**, **Sharpness** | 1 is neutral. Saturation 0 gives black and white. |
+| **Exposure compensation (EV)** | +1 doubles the exposure, −1 halves it. Useful against backlight (a bright street behind the visitor): raise it. |
+| **Exposure metering** | *Centre-weighted* suits a doorbell; *Spot* exposes for the very centre (the visitor's face) and ignores a bright background. |
+| **Noise reduction** | *High quality* gives a cleaner image at night. |
+| **White balance** | *Automatic* by default. If colours are off, try a preset (*Indoor*, *Daylight*…) or *Manual gains*: raise red against a greenish/blue image, raise blue against a yellow/orange one. |
+
+**Back to defaults** removes every adjustment. Sensors without an infrared filter (NoIR) never give perfectly natural colours in daylight: the NoIR tuning and the white balance only limit the effect.
+
 ## Audio
 
 Choose the **microphone** (sent with the video) and the **speaker** (plays your voice). Volumes are saved and restored at boot. **Play a test tone** checks the speaker.
