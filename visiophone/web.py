@@ -331,7 +331,9 @@ def create_app(service):
         if action == "blink":
             service.io.blink(cfg.section("led")["blink_duration_s"])
         elif action in ("on", "off"):
-            service.io.set_led(on=action == "on")
+            service.io.set_led(on=action == "on", effect="none" if action == "on" else None)
+        elif action == "breathe":
+            service.io.set_led(effect="breathe")
         elif action == "ring":
             service.io._pressed()
         else:

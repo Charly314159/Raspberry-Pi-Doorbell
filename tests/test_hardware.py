@@ -55,3 +55,22 @@ def test_parse_v4l2_formats():
         "yuyv": {"640x480": [30.0]},
         "h264": {"1280x720": [30.0]},
     }
+
+
+def test_led_effects():
+    from gpiozero import Device
+    from gpiozero.pins.mock import MockFactory, MockPWMPin
+    Device.pin_factory = MockFactory(pin_class=MockPWMPin)
+    from visiophone.gpio import DoorbellIO
+    io = DoorbellIO(lambda: None)
+    io.configure({"enabled": False, "gpio": 17, "pull_up": True, "debounce_ms": 50, "min_interval_s": 0},
+                 {"enabled": True, "gpio": 27, "on_at_start": True, "brightness": 128,
+                  "blink_on_ring": True, "blink_duration_s": 1})
+    assert io.led_state() == {"enabled": True, "on": True, "brightness": 128, "effect": "none"}
+    io.set_led(effect="breathe")
+    assert io.led_state()["effect"] == "breathe"
+    io.set_led(effect="none")
+    assert abs(io._led.value - 128 / 255) < 0.01
+    io.set_led(on=False)
+    assert io._led.value == 0
+    io.close()

@@ -6,6 +6,14 @@ import time
 log = logging.getLogger(__name__)
 
 BLINK_PERIOD_S = 0.5
+# LED effects, selectable from Home Assistant: (on_time, off_time) for blinks,
+# fade time for breathing
+EFFECTS = {
+    "none": None,
+    "blink": ("blink", 0.5, 0.5),
+    "fast_blink": ("blink", 0.15, 0.15),
+    "breathe": ("pulse", 1.2, 1.2),
+}
 
 
 class DoorbellIO:
@@ -24,6 +32,7 @@ class DoorbellIO:
         self._last_accepted = 0.0
         self.led_on = False
         self.led_brightness = 255
+        self.led_effect = "none"
         self.led_listeners = []       # callables notified when the LED state changes
 
     # --- Configuration ------------------------------------------------------
@@ -91,24 +100,44 @@ class DoorbellIO:
 
     # --- LED ----------------------------------------------------------------
 
-    def _set_led(self, on, brightness):
-        self.led_on, self.led_brightness = bool(on), max(1, min(255, int(brightness)))
-        if self._led is not None:
-            self._led.value = self.led_brightness / 255 if self.led_on else 0
+    def _apply_led(self):
+        """Drive the LED from the steady state: off, on, or an effect."""
+        led = self._led
+        if led is None:
+            return
+        effect = EFFECTS.get(self.led_effect) if self.led_on else None
+        if effect is None:
+            led.value = self.led_brightness / 255 if self.led_on else 0
+        elif effect[0] == "blink":
+            led.blink(on_time=effect[1], off_time=effect[2], background=True)
+        else:
+            led.pulse(fade_in_time=effect[1], fade_out_time=effect[2], background=True)
+
+    def _notify(self):
         for listener in list(self.led_listeners):
             try:
                 listener()
             except Exception:
                 log.exception("LED listener failed")
 
-    def set_led(self, on=None, brightness=None):
-        """Steady LED state (from Home Assistant or the web interface)."""
+    def _set_led(self, on, brightness, effect=None):
+        self.led_on, self.led_brightness = bool(on), max(1, min(255, int(brightness)))
+        if effect is not None:
+            self.led_effect = effect if effect in EFFECTS else "none"
+        self._apply_led()
+        self._notify()
+
+    def set_led(self, on=None, brightness=None, effect=None):
+        """Steady LED state (from Home Assistant or the web interface).
+        Choosing an effect turns the LED on."""
         with self._lock:
             if self._restore_timer:
                 self._restore_timer.cancel()
                 self._restore_timer = None
+            if effect is not None and on is None:
+                on = True
             self._set_led(self.led_on if on is None else on,
-                          self.led_brightness if brightness is None else brightness)
+                          self.led_brightness if brightness is None else brightness, effect)
 
     def blink(self, duration_s):
         """Blink for duration_s, then come back to the steady state."""
@@ -127,8 +156,8 @@ class DoorbellIO:
     def _restore(self):
         with self._lock:
             self._restore_timer = None
-            if self._led is not None:
-                self._led.value = self.led_brightness / 255 if self.led_on else 0
+            self._apply_led()
 
     def led_state(self):
-        return {"enabled": self._led is not None, "on": self.led_on, "brightness": self.led_brightness}
+        return {"enabled": self._led is not None, "on": self.led_on, "brightness": self.led_brightness,
+                "effect": self.led_effect}

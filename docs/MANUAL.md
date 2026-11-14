@@ -184,7 +184,7 @@ A **Doorbell** device appears in Settings → Devices → MQTT.
 | Entity | Use |
 |--------|-----|
 | `event.visiophone_doorbell` | Fires `press` on each ring. |
-| `light.visiophone_led` | LED ring, with brightness (when the LED is enabled). |
+| `light.visiophone_led` | LED ring, with brightness and effects (`blink`, `fast_blink`, `breathe`), when the LED is enabled. |
 | `binary_sensor.visiophone_live_view` | On while someone watches the live view in a browser (go2rtc page, Advanced Camera Card). RTSP clients (recordings, Frigate) do not count. |
 | `button.visiophone_answer` | Tells the doorbell somebody answers: stops the LED blinking and cancels the video message. |
 | `button.visiophone_restart_stream`, `_reboot`, `_shutdown` | Maintenance. |
@@ -250,7 +250,15 @@ mode: single
 
 ### Video message when nobody answers
 
-The repository ships a Home Assistant blueprint, `homeassistant/blueprints/video_message.yaml`. After a ring, it waits for an answer; if nobody answers in time it plays a greeting on the doorbell's speaker, records a clip and runs your actions (typically a notification).
+The repository ships a Home Assistant blueprint, `homeassistant/blueprints/video_message.yaml`:
+
+1. After a ring, it waits for somebody to answer (30 s by default).
+2. Without an answer, a voice message invites the visitor to press the button to leave a video message. The LED ring breathes.
+3. The visitor presses: recording starts, the LED blinks and a voice message tells them to speak.
+4. The visitor presses again to finish (or the maximum length, 40 s, is reached): a thank-you message plays, the LED returns to its previous state.
+5. Your actions run, typically a notification with a snapshot.
+
+Home Assistant cannot stop a recording early, so the clip always lasts the maximum length; the second press ends the message for the visitor.
 
 Somebody answers when:
 
@@ -267,10 +275,27 @@ data:
 
 Setup:
 
-1. Copy the file to `config/blueprints/automation/visiophone/` (or import it from its GitHub URL), then **Settings → Automations → Blueprints → Visiophone – video message**.
-2. Pick the doorbell event, live view sensor, Answer button and camera entity (see *Adding the camera*).
-3. For the greeting, pick a text-to-speech engine and a media player that plays on the doorbell, for example the Music Player Daemon integration pointed at an MPD server on the Pi.
-4. In **Actions**, add a notification. `snapshot_url` (image) and `clip_url` (video) can be used in it:
+1. Create a toggle helper (**Settings → Helpers → Toggle**), for example *Doorbell message in progress*.
+2. Add a condition to your ring automation so that the presses of a message do not ring. The second line is a safety net in case the helper stays on:
+
+```yaml
+conditions:
+  - condition: or
+    conditions:
+      - condition: state
+        entity_id: input_boolean.doorbell_message_in_progress
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.doorbell_message_in_progress
+        state: "on"
+        for:
+          minutes: 3
+```
+
+3. Copy the blueprint to `config/blueprints/automation/visiophone/` (or import it from its GitHub URL), then **Settings → Automations → Blueprints → Visiophone – video message**.
+4. Pick the doorbell event, live view sensor, Answer button, camera entity (see *Adding the camera*), the helper and, if enabled, the LED light.
+5. For the voice messages, pick a text-to-speech engine and a media player that plays on the doorbell, for example the Music Player Daemon integration pointed at an MPD server on the Pi.
+6. In **Actions**, add a notification. `snapshot_url` (image) and `clip_url` (video) can be used in it:
 
 ```yaml
 - action: notify.mobile_app_my_phone
@@ -282,7 +307,17 @@ Setup:
 
 Clips are saved in `/media/visiophone/` and appear in **Media → My media**. Delete old ones from time to time.
 
-> The doorbell must be able to download the greeting from Home Assistant. If the media player logs *HTTP 403*, Home Assistant has banned the Pi's address after failed logins: remove it from `ip_bans.yaml` and restart Home Assistant.
+The LED light has the effects `none` (steady), `blink`, `fast_blink` and `breathe`, usable in your own automations too:
+
+```yaml
+- action: light.turn_on
+  target:
+    entity_id: light.visiophone_led
+  data:
+    effect: breathe
+```
+
+> The doorbell must be able to download the voice messages from Home Assistant. If the media player logs *HTTP 403*, Home Assistant has banned the Pi's address after failed logins: remove it from `ip_bans.yaml` and restart Home Assistant.
 
 ## Frigate
 

@@ -1,18 +1,28 @@
 blueprint:
   name: Visiophone – video message when nobody answers
   description: >
-    When the doorbell rings and nobody answers within the waiting time, plays a
-    greeting to the visitor, records a video clip from the doorbell camera and
-    runs your own actions (for example a notification with the clip).
+    When the doorbell rings and nobody answers within the waiting time, invites
+    the visitor to press the button to leave a video message. A press starts
+    the recording, a second press ends it (or the maximum length is reached),
+    then your own actions run (for example a notification).
 
     Somebody "answers" when the live view is opened in a browser
     (`binary_sensor.<id>_live_view`), when the doorbell's Answer button is
     pressed, or when an actionable notification button with the chosen action
     ID is tapped.
 
-    Clips and snapshots are saved under the chosen media folder and appear in
-    Home Assistant's media browser. Variables available in your actions:
-    `clip_path`, `clip_url`, `snapshot_url`, `media_id`.
+    The button's LED ring (optional) shows what happens: it breathes while
+    waiting for the visitor to press, blinks while recording, and returns to
+    its previous state at the end.
+
+    While a message is being left, the "message in progress" helper is on: add
+    it as a condition to your ring automation so that these presses do not ring.
+
+    The clip is always recorded for the maximum length (Home Assistant cannot
+    stop a recording early): the second press only ends the message for the
+    visitor. Clips and snapshots are saved under the chosen media folder.
+    Variables available in your actions: `clip_path`, `clip_url`,
+    `snapshot_url`, `media_id`.
   domain: automation
   author: Visiophone contributors
   homeassistant:
@@ -45,12 +55,27 @@ blueprint:
           selector:
             entity:
               domain: camera
-    greeting:
-      name: Greeting
+        message_flag:
+          name: Message in progress helper
+          description: >
+            An input_boolean (create it in Settings → Helpers, initial value
+            off). Use it as a condition in your ring automation.
+          selector:
+            entity:
+              domain: input_boolean
+        led_light:
+          name: Button LED (optional)
+          description: light.<id>_led of the doorbell, with its effects.
+          default: []
+          selector:
+            entity:
+              domain: light
+    voice:
+      name: Voice messages
       icon: mdi:account-voice
       input:
         greeting_enabled:
-          name: Play a greeting
+          name: Speak to the visitor
           default: true
           selector:
             boolean: {}
@@ -68,40 +93,60 @@ blueprint:
             entity:
               domain: media_player
         greeting_message:
-          name: Greeting message
-          default: Nobody can answer right now. Please leave a message after the beep, you are being recorded.
+          name: Invitation
+          default: Nobody can answer right now. To leave a video message, press the button.
           selector:
             text:
               multiline: true
-        greeting_seconds:
-          name: Greeting duration
-          description: Time to let the greeting play before recording starts.
-          default: 7
+        speak_message:
+          name: Recording started
+          default: Please speak now. Press the button again when you are done.
           selector:
-            number:
-              min: 0
-              max: 60
-              unit_of_measurement: s
+            text:
+              multiline: true
+        thanks_message:
+          name: Message recorded
+          default: Thank you, your message has been recorded. Goodbye.
+          selector:
+            text:
+              multiline: true
     settings:
       name: Settings
       icon: mdi:cog
       input:
         answer_timeout:
-          name: Waiting time
-          description: How long to wait for an answer after a ring.
+          name: Waiting time for an answer
           default: 30
           selector:
             number:
               min: 5
               max: 300
               unit_of_measurement: s
-        record_seconds:
-          name: Message length
+        start_timeout:
+          name: Waiting time for the visitor to start
+          description: After the invitation, how long to wait for a press.
           default: 20
           selector:
             number:
               min: 5
               max: 120
+              unit_of_measurement: s
+        record_seconds:
+          name: Maximum message length
+          default: 40
+          selector:
+            number:
+              min: 10
+              max: 120
+              unit_of_measurement: s
+        startup_seconds:
+          name: Stream start-up time
+          description: Delay between starting the recording and telling the visitor to speak.
+          default: 4
+          selector:
+            number:
+              min: 0
+              max: 15
               unit_of_measurement: s
         media_folder:
           name: Media folder
@@ -121,7 +166,7 @@ blueprint:
       input:
         message_actions:
           name: Actions
-          description: For example a notification with snapshot_url as image and a link to the clip.
+          description: For example a notification with snapshot_url as image.
           default: []
           selector:
             action: {}
@@ -134,8 +179,11 @@ variables:
   tts_engine: !input tts_engine
   speaker: !input speaker
   record_seconds: !input record_seconds
-  greeting_seconds: !input greeting_seconds
+  startup_seconds: !input startup_seconds
   media_folder: !input media_folder
+  led_light: !input led_light
+  has_led: "{{ led_light | length > 0 }}"
+  speak: "{{ greeting_enabled and tts_engine | length > 0 and speaker | length > 0 }}"
   stamp: "{{ now().strftime('%Y-%m-%d_%H-%M-%S') }}"
   relative_clip: "{{ media_folder ~ '/' ~ stamp ~ '.mp4' }}"
   relative_snapshot: "{{ media_folder ~ '/' ~ stamp ~ '.jpg' }}"
@@ -151,6 +199,12 @@ triggers:
     options:
       event_type:
         - press
+
+conditions:
+  - alias: Not while a message is being left
+    condition: state
+    entity_id: !input message_flag
+    state: "off"
 
 actions:
   - alias: Wait for somebody to answer
@@ -171,10 +225,30 @@ actions:
   - alias: Stop if somebody answered
     condition: template
     value_template: "{{ wait.trigger is none }}"
-  - alias: Greeting
+
+  - alias: Message mode on (presses no longer ring)
+    action: input_boolean.turn_on
+    target:
+      entity_id: !input message_flag
+  - alias: LED breathes while waiting for the visitor
     if:
       - condition: template
-        value_template: "{{ greeting_enabled and tts_engine | length > 0 and speaker | length > 0 }}"
+        value_template: "{{ has_led }}"
+    then:
+      - action: scene.create
+        data:
+          scene_id: visiophone_led_before_message
+          snapshot_entities: "{{ [led_light] }}"
+      - action: light.turn_on
+        continue_on_error: true
+        target:
+          entity_id: "{{ led_light }}"
+        data:
+          effect: breathe
+  - alias: Invitation
+    if:
+      - condition: template
+        value_template: "{{ speak }}"
     then:
       - action: tts.speak
         continue_on_error: true
@@ -183,22 +257,110 @@ actions:
         data:
           media_player_entity_id: !input speaker
           message: !input greeting_message
-      - delay:
-          seconds: "{{ greeting_seconds }}"
-  - alias: Snapshot for the notification
-    action: camera.snapshot
-    continue_on_error: true
+  - alias: Wait for the visitor to press to start
+    wait_for_trigger:
+      - trigger: event.received
+        target:
+          entity_id: !input doorbell_event
+        options:
+          event_type:
+            - press
+    timeout:
+      seconds: !input start_timeout
+    continue_on_timeout: true
+  - alias: No press, no message
+    if:
+      - condition: template
+        value_template: "{{ wait.trigger is none }}"
+    then:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: !input message_flag
+      - if:
+          - condition: template
+            value_template: "{{ has_led }}"
+        then:
+          - action: scene.turn_on
+            continue_on_error: true
+            target:
+              entity_id: scene.visiophone_led_before_message
+      - stop: The visitor did not leave a message
+
+  - alias: Record while the visitor speaks
+    parallel:
+      - alias: Recording (always the maximum length)
+        action: camera.record
+        target:
+          entity_id: !input camera
+        data:
+          filename: "{{ clip_path }}"
+          duration: "{{ record_seconds }}"
+      - alias: Talk to the visitor
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ has_led }}"
+            then:
+              - action: light.turn_on
+                continue_on_error: true
+                target:
+                  entity_id: "{{ led_light }}"
+                data:
+                  effect: blink
+          - delay:
+              seconds: "{{ startup_seconds }}"
+          - action: camera.snapshot
+            continue_on_error: true
+            target:
+              entity_id: !input camera
+            data:
+              filename: "{{ '/media/' ~ relative_snapshot }}"
+          - if:
+              - condition: template
+                value_template: "{{ speak }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: !input tts_engine
+                data:
+                  media_player_entity_id: !input speaker
+                  message: !input speak_message
+          - alias: Wait for the press that ends the message
+            wait_for_trigger:
+              - trigger: event.received
+                target:
+                  entity_id: !input doorbell_event
+                options:
+                  event_type:
+                    - press
+            timeout:
+              seconds: "{{ [record_seconds - startup_seconds, 1] | max }}"
+            continue_on_timeout: true
+          - if:
+              - condition: template
+                value_template: "{{ has_led }}"
+            then:
+              - action: scene.turn_on
+                continue_on_error: true
+                target:
+                  entity_id: scene.visiophone_led_before_message
+          - if:
+              - condition: template
+                value_template: "{{ speak }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: !input tts_engine
+                data:
+                  media_player_entity_id: !input speaker
+                  message: !input thanks_message
+
+  - alias: Message mode off
+    action: input_boolean.turn_off
     target:
-      entity_id: !input camera
-    data:
-      filename: "{{ '/media/' ~ relative_snapshot }}"
-  - alias: Record the message
-    action: camera.record
-    target:
-      entity_id: !input camera
-    data:
-      filename: "{{ clip_path }}"
-      duration: "{{ record_seconds }}"
+      entity_id: !input message_flag
   # camera.record returns once the clip is written; leave the file a moment to close
   - delay:
       seconds: 2

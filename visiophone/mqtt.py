@@ -10,6 +10,7 @@ import threading
 import paho.mqtt.client as mqtt
 
 from . import __version__, hardware
+from .gpio import EFFECTS
 
 log = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ class MqttBridge:
             on = None
             if "state" in data:
                 on = str(data["state"]).upper() == "ON"
-            self.service.io.set_led(on=on, brightness=data.get("brightness"))
+            self.service.io.set_led(on=on, brightness=data.get("brightness"), effect=data.get("effect"))
 
     # --- Publishing ---------------------------------------------------------
 
@@ -198,6 +199,7 @@ class MqttBridge:
                 "name": "Button LED", "schema": "json", "icon": "mdi:circle-outline",
                 "command_topic": self.topic("led/set"), "state_topic": self.topic("led/state"),
                 "brightness": True, "supported_color_modes": ["brightness"],
+                "effect": True, "effect_list": list(EFFECTS),
             }))
         for component, key, config in entities:
             config.update(common, unique_id=f"{self.base}_{key}",
@@ -238,4 +240,5 @@ class MqttBridge:
         state = self.service.io.led_state()
         if state["enabled"]:
             self._publish("led/state", {"state": "ON" if state["on"] else "OFF",
-                                        "brightness": state["brightness"], "color_mode": "brightness"}, retain=True)
+                                        "brightness": state["brightness"], "color_mode": "brightness",
+                                        "effect": state["effect"]}, retain=True)
