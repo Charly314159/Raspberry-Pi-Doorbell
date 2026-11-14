@@ -13,7 +13,7 @@ from . import __version__, hardware
 
 log = logging.getLogger(__name__)
 
-COMMANDS = ("restart_stream", "reboot", "shutdown")
+COMMANDS = ("answer", "restart_stream", "reboot", "shutdown")
 
 
 class MqttBridge:
@@ -87,6 +87,7 @@ class MqttBridge:
         client.subscribe(self.topic("led/set"))
         client.publish(self.topic("status"), "online", retain=True)
         self.publish_led()
+        self.publish_live_view()
         self.service.wake_status()
 
     def _on_disconnect(self, client, userdata, flags, reason_code, properties):
@@ -172,6 +173,14 @@ class MqttBridge:
                 "value_template": f"{{{{ value_json.{key} }}}}", "payload_on": "ON", "payload_off": "OFF",
                 "device_class": device_class, "entity_category": "diagnostic",
             }))
+        entities.append(("binary_sensor", "live_view", {
+            "name": "Live view", "state_topic": self.topic("live_view"), "icon": "mdi:eye",
+            "payload_on": "ON", "payload_off": "OFF",
+        }))
+        entities.append(("button", "answer", {
+            "name": "Answer", "command_topic": self.topic("command"), "payload_press": "answer",
+            "icon": "mdi:phone-in-talk",
+        }))
         for key, name, device_class, icon in [
             ("restart_stream", "Restart video stream", None, "mdi:video-wireless"),
             ("reboot", "Reboot", "restart", None),
@@ -221,6 +230,9 @@ class MqttBridge:
             "stream": on_off(metrics["go2rtc"]),
         }
         self._publish("system", payload, retain=True)
+
+    def publish_live_view(self):
+        self._publish("live_view", "ON" if self.service.live_viewers else "OFF", retain=True)
 
     def publish_led(self):
         state = self.service.io.led_state()

@@ -115,6 +115,7 @@ function startStatusRefresh() {
     set("disk_used", `${m.disk_used} %`);
     set("go2rtc", m.go2rtc ? pill("running", "ok") : pill("stopped", "bad"));
     set("clients", s.stream_clients);
+    set("live", s.live_viewers);
     set("mqtt", !s.mqtt.enabled ? pill("disabled", "") : s.mqtt.connected ? pill("connected", "ok")
       : `${pill("disconnected", "bad")} <small>${escapeHtml(s.mqtt.error || "")}</small>`);
     const last = document.querySelector('[data-key="last-ring"]');

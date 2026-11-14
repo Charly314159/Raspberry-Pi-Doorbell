@@ -185,6 +185,8 @@ A **Doorbell** device appears in Settings → Devices → MQTT.
 |--------|-----|
 | `event.visiophone_doorbell` | Fires `press` on each ring. |
 | `light.visiophone_led` | LED ring, with brightness (when the LED is enabled). |
+| `binary_sensor.visiophone_live_view` | On while someone watches the live view in a browser (go2rtc page, Advanced Camera Card). RTSP clients (recordings, Frigate) do not count. |
+| `button.visiophone_answer` | Tells the doorbell somebody answers: stops the LED blinking and cancels the video message. |
 | `button.visiophone_restart_stream`, `_reboot`, `_shutdown` | Maintenance. |
 | `sensor.visiophone_cpu_temperature`, `_cpu_load`, `_memory_used`, `_disk_used`, `_boot_time` | Diagnostics. |
 | `binary_sensor.visiophone_stream`, `_under_voltage`, `_under_voltage_since_boot` | Diagnostics. |
@@ -198,7 +200,25 @@ Use the **go2rtc** support built into Home Assistant, or the **Generic Camera** 
 - Stream source: `rtsp://<pi-address>:8554/doorbell`
 - Still image: `http://<pi-address>:1984/api/frame.jpeg?src=doorbell`
 
-For two-way audio in dashboards, the [WebRTC Camera](https://github.com/AlexxIT/WebRTC) custom card can use `doorbell_web` with the microphone.
+### Live view and two-way audio in a dashboard
+
+The [Advanced Camera Card](https://github.com/dermotduffy/advanced-camera-card) can connect straight to the doorbell's go2rtc, with the microphone:
+
+```yaml
+type: custom:advanced-camera-card
+cameras:
+  - camera_entity: camera.visiophone
+    live_provider: go2rtc
+    go2rtc:
+      url: http://<pi-address>:1984
+      stream: doorbell_web
+menu:
+  buttons:
+    microphone:
+      enabled: true
+```
+
+On the doorbell's **System** page, check **Allow dashboards served by another address to open the live player**, or the browser blocks the connection. Viewers connected this way are seen by the doorbell: `binary_sensor.visiophone_live_view` turns on, which the video message blueprint takes as an answer.
 
 ### Example automation
 
@@ -227,6 +247,42 @@ mode: single
 ```
 
 `not_from: unavailable` avoids a ring when the doorbell reconnects.
+
+### Video message when nobody answers
+
+The repository ships a Home Assistant blueprint, `homeassistant/blueprints/video_message.yaml`. After a ring, it waits for an answer; if nobody answers in time it plays a greeting on the doorbell's speaker, records a clip and runs your actions (typically a notification).
+
+Somebody answers when:
+
+- the live view is opened in a browser (`binary_sensor.visiophone_live_view`), for example with the Advanced Camera Card;
+- `button.visiophone_answer` is pressed (dashboard button);
+- a notification button with the action `VISIOPHONE_ANSWER` is tapped. Add it to your ring notification:
+
+```yaml
+data:
+  actions:
+    - action: VISIOPHONE_ANSWER
+      title: Answer
+```
+
+Setup:
+
+1. Copy the file to `config/blueprints/automation/visiophone/` (or import it from its GitHub URL), then **Settings → Automations → Blueprints → Visiophone – video message**.
+2. Pick the doorbell event, live view sensor, Answer button and camera entity (see *Adding the camera*).
+3. For the greeting, pick a text-to-speech engine and a media player that plays on the doorbell, for example the Music Player Daemon integration pointed at an MPD server on the Pi.
+4. In **Actions**, add a notification. `snapshot_url` (image) and `clip_url` (video) can be used in it:
+
+```yaml
+- action: notify.mobile_app_my_phone
+  data:
+    message: A visitor left a video message.
+    data:
+      image: "{{ snapshot_url }}"
+```
+
+Clips are saved in `/media/visiophone/` and appear in **Media → My media**. Delete old ones from time to time.
+
+> The doorbell must be able to download the greeting from Home Assistant. If the media player logs *HTTP 403*, Home Assistant has banned the Pi's address after failed logins: remove it from `ip_bans.yaml` and restart Home Assistant.
 
 ## Frigate
 

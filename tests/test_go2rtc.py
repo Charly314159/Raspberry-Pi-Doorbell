@@ -55,3 +55,13 @@ def test_missing_usb_camera(config, hw, monkeypatch):
     config.update("camera", {"source": "usb", "usb_device": "/dev/v4l/by-id/other"})
     data, warnings = render(config, hw, monkeypatch)
     assert "not found" in warnings[0]
+
+
+def test_live_viewers_ignores_rtsp():
+    streams = {
+        "doorbell": {"consumers": [{"format_name": "rtsp"}, {"format_name": "webrtc/json"}]},
+        "doorbell_web": {"consumers": [{"format_name": "mse/fmp4"}]},
+        "other": {"consumers": None},
+    }
+    assert go2rtc.live_viewers(streams) == 2
+    assert go2rtc.live_viewers(None) == 0

@@ -26,6 +26,8 @@
       <dd data-key="go2rtc">{% if status.metrics.go2rtc %}<span class="pill ok">running</span>{% else %}<span class="pill bad">stopped</span>{% endif %}</dd>
       <dt>Stream clients</dt>
       <dd data-key="clients">{{ status.stream_clients }}</dd>
+      <dt>Watching live</dt>
+      <dd data-key="live">{{ status.live_viewers }}</dd>
       <dt>Home Assistant (MQTT)</dt>
       <dd data-key="mqtt">
         {% if not status.mqtt.enabled %}<span class="pill">disabled</span>

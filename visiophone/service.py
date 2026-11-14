@@ -24,6 +24,8 @@ class Visiophone:
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._apply_lock = threading.Lock()
+        self.live_viewers = 0
+        self.last_answer = None
 
     # --- Applying the configuration ----------------------------------------
 
@@ -60,7 +62,16 @@ class Visiophone:
         self.rings.appendleft(time.time())
         self.mqtt.publish_ring()
 
+    def answer(self):
+        """Someone answers the doorbell: stop the LED blinking."""
+        self.last_answer = time.time()
+        log.info("Doorbell answered")
+        self.io.set_led()
+
     def run_command(self, command):
+        if command == "answer":
+            self.answer()
+            return True, "Answered."
         actions = {
             "restart_stream": ("restart-go2rtc",),
             "reboot": ("reboot",),
@@ -92,6 +103,17 @@ class Visiophone:
             self._wake.wait(max(5, self.cfg.section("mqtt")["status_interval_s"]))
             self._wake.clear()
 
+    def _live_view_loop(self):
+        """Poll go2rtc for browser viewers and publish changes at once."""
+        while not self._stop.wait(2):
+            viewers = go2rtc.live_viewers(go2rtc.api_streams(self.cfg))
+            if viewers != self.live_viewers:
+                log.info("Live viewers: %d", viewers)
+                self.live_viewers = viewers
+                if viewers:
+                    self.answer()
+                self.mqtt.publish_live_view()
+
     # --- Main ---------------------------------------------------------------
 
     def start(self):
@@ -107,6 +129,7 @@ class Visiophone:
         self.apply_io()
         self.apply_mqtt()
         threading.Thread(target=self._status_loop, name="status", daemon=True).start()
+        threading.Thread(target=self._live_view_loop, name="live-view", daemon=True).start()
 
     def stop(self):
         self._stop.set()

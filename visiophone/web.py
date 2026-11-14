@@ -148,6 +148,7 @@ def create_app(service):
             "go2rtc_api": streams is not None,
             "stream_defined": name in (streams or {}),
             "stream_clients": len(stream.get("consumers") or []),
+            "live_viewers": service.live_viewers,
             "stream_active": bool(stream.get("producers") and any(p.get("state") or p.get("medias")
                                                                   for p in stream["producers"])),
             "mqtt": {"enabled": cfg.section("mqtt")["enabled"], "connected": service.mqtt.connected,
@@ -394,7 +395,8 @@ def create_app(service):
         elif not password:
             flash("A password is needed with a user name.", "error")
             return redirect(url_for("system_page"))
-        cfg.update("streams", {"name": name, "username": username, "password": password})
+        cfg.update("streams", {"name": name, "username": username, "password": password,
+                               "cross_origin": checked("cross_origin")})
         report("Stream settings saved.", service.apply_streams())
         return redirect(url_for("system_page"))
 

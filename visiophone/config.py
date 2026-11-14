@@ -47,6 +47,9 @@ DEFAULTS = {
         "name": "doorbell",
         "username": "",            # optional go2rtc credentials (RTSP and API)
         "password": "",
+        # Let web pages served elsewhere (Home Assistant dashboards) open the
+        # go2rtc player, e.g. the Advanced Camera Card with its go2rtc provider
+        "cross_origin": False,
     },
     "button": {
         "enabled": True,

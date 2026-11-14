@@ -6,6 +6,7 @@ A Raspberry Pi video doorbell for Home Assistant, configured from a web page.
 - **Streams** through [go2rtc](https://github.com/AlexxIT/go2rtc): RTSP for Home Assistant and Frigate, WebRTC with two-way audio for browsers.
 - **Doorbell button** on a GPIO, with an optional LED ring (dimmable, blinks after a ring).
 - **Home Assistant** over MQTT discovery: doorbell event, LED light, diagnostics, reboot buttons. No YAML needed.
+- **Video message** blueprint for Home Assistant: greeting and recording when nobody answers.
 - **Web interface**: status, camera, audio, button, Home Assistant and system settings, built-in manual. Password protected.
 
 ## Requirements

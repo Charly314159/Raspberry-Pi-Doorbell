@@ -40,6 +40,10 @@
       <label>User name <input name="username" value="{{ streams.username }}" autocomplete="off"></label>
       <label>Password <input type="password" name="password" autocomplete="new-password" placeholder="{{ 'unchanged' if streams.password else '' }}"></label>
     </div>
+    <h3>Home Assistant dashboards</h3>
+    <label class="check"><input type="checkbox" name="cross_origin" {{ 'checked' if streams.cross_origin }}>
+      Allow dashboards served by another address to open the live player
+      <small class="muted">— needed by the Advanced Camera Card (go2rtc provider) for live view and two-way audio</small></label>
     <button type="submit">Save</button>
   </form>
 </section>

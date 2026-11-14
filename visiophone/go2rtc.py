@@ -174,6 +174,8 @@ def build(cfg, hw):
         "rtsp": {"listen": f":{RTSP_PORT}"},
         "webrtc": {"listen": ":8555"},
     }
+    if streams_cfg.get("cross_origin"):
+        config["api"]["origin"] = "*"
     if streams_cfg["username"]:
         for section in ("api", "rtsp"):
             config[section]["username"] = streams_cfg["username"]
@@ -220,6 +222,21 @@ def api_streams(cfg):
         return json.loads(_request(cfg, "/api/streams"))
     except (OSError, ValueError):
         return None
+
+
+# Consumers that are people watching (browsers), as opposed to RTSP clients
+# such as Home Assistant recordings, Frigate or the internal _web stream.
+LIVE_FORMATS = ("webrtc", "mse", "hls", "mjpeg")
+
+
+def live_viewers(streams):
+    """Number of browser viewers over all streams, from /api/streams."""
+    count = 0
+    for stream in (streams or {}).values():
+        for consumer in stream.get("consumers") or []:
+            if str(consumer.get("format_name", "")).startswith(LIVE_FORMATS):
+                count += 1
+    return count
 
 
 def snapshot(cfg):
