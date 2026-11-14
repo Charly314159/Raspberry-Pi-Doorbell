@@ -220,7 +220,7 @@ menu:
 
 How the card reaches the doorbell depends on how you open Home Assistant:
 
-- **Home Assistant over HTTPS** (remote access, DuckDNS, Nabu Casa, the app with an HTTPS address): the browser refuses plain-HTTP connections from an HTTPS page. Install **Hass Web Proxy** (`dermotduffy/hass-web-proxy-integration`) from the Marketplace, restart Home Assistant and add the integration: the card then streams through Home Assistant automatically. This also makes the browser microphone available, since the page is secure.
+- **Home Assistant over HTTPS** (remote access, DuckDNS, Nabu Casa, the app with an HTTPS address): the browser refuses plain-HTTP connections from an HTTPS page, so the card cannot reach the doorbell directly. Use `live_provider: ha` instead (Home Assistant's own stream, through the camera entity): it works locally and remotely, but without the microphone, and opening it does not count as an answer. The *Hass Web Proxy* integration would relay the doorbell's go2rtc through Home Assistant, but **do not install it next to the Frigate integration**: they require different versions of the same library, and Frigate fails to start.
 - **Home Assistant over plain HTTP** on your network: on the doorbell's **System** page, check **Allow dashboards served by another address to open the live player**, or the browser blocks the connection. Viewers connected this way are seen by the doorbell: `binary_sensor.visiophone_live_view` turns on, which the video message blueprint takes as an answer.
 
 ### Example automation
