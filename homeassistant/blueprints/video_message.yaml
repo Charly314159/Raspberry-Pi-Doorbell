@@ -25,6 +25,7 @@ blueprint:
     `snapshot_url`, `media_id`.
   domain: automation
   author: Visiophone contributors
+  source_url: https://github.com/Charly314159/Raspberry-Pi-Doorbell/blob/main/homeassistant/blueprints/video_message.yaml
   homeassistant:
     min_version: "2026.7.0"
   input:

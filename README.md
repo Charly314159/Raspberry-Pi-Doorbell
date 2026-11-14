@@ -18,12 +18,18 @@ A Raspberry Pi video doorbell for Home Assistant, configured from a web page.
 ## Install
 
 ```sh
-git clone https://github.com/<your-account>/visiophone.git
-cd visiophone
+git clone https://github.com/Charly314159/Raspberry-Pi-Doorbell.git
+cd Raspberry-Pi-Doorbell
 sudo ./install.sh
 ```
 
 Then open `http://<pi-address>/`. Update with `git pull && sudo ./install.sh`.
+
+## Home Assistant blueprint
+
+[![Import the video message blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCharly314159%2FRaspberry-Pi-Doorbell%2Fblob%2Fmain%2Fhomeassistant%2Fblueprints%2Fvideo_message.yaml)
+
+Video message when nobody answers: greeting, press to record, LED feedback. See the manual.
 
 ## Documentation
 

@@ -76,8 +76,8 @@ On the Pi, in a terminal (or over SSH):
 
 ```sh
 sudo apt install -y git
-git clone https://github.com/<your-account>/visiophone.git
-cd visiophone
+git clone https://github.com/Charly314159/Raspberry-Pi-Doorbell.git
+cd Raspberry-Pi-Doorbell
 sudo ./install.sh
 ```
 
@@ -329,7 +329,7 @@ conditions:
           minutes: 3
 ```
 
-3. Copy the blueprint to `config/blueprints/automation/visiophone/` (or import it from its GitHub URL), then **Settings → Automations → Blueprints → Visiophone – video message**.
+3. Import the blueprint: [open it in your Home Assistant](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCharly314159%2FRaspberry-Pi-Doorbell%2Fblob%2Fmain%2Fhomeassistant%2Fblueprints%2Fvideo_message.yaml), or copy the file to `config/blueprints/automation/visiophone/`. Then **Settings → Automations → Blueprints → Visiophone – video message**.
 4. Pick the doorbell event, live view sensor, Answer button, camera entity (see *Adding the camera*), the helper and, if enabled, the LED light.
 5. For the voice messages, pick a text-to-speech engine and a media player that plays on the doorbell, for example the Music Player Daemon integration pointed at an MPD server on the Pi.
 6. In **Actions**, add a notification. `snapshot_url` (image) and `clip_url` (video) can be used in it:
