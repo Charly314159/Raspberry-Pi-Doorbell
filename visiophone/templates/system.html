@@ -32,7 +32,8 @@
   <form method="post" action="{{ url_for('system_streams') }}" class="form">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <label>Stream name <input name="name" value="{{ streams.name }}" pattern="[A-Za-z0-9_\-]+" required></label>
-    <p class="muted small">Streams: <code>rtsp://{{ ip }}:8554/{{ streams.name }}</code> and <code>…/{{ streams.name }}_web</code>.</p>
+    <p class="muted small">Streams: <code>rtsp://{{ ip }}:8554/{{ streams.name }}</code> and <code>…/{{ streams.name }}_web</code>.
+       Renaming the stream breaks everything that uses these addresses (Home Assistant camera, dashboard cards, Frigate, bookmarks): update them too.</p>
     <h3>Stream protection (optional)</h3>
     <p class="muted small">Without it, anyone on your network can watch the camera and use the go2rtc page.
        With it, RTSP clients and the go2rtc page ask for this user name and password.</p>
