@@ -124,3 +124,16 @@ def test_voice_counts_as_answer(client):
     assert not service.live and service.last_answer is None
     service.on_sound(0.6, "voice")           # somebody talks through the doorbell
     assert service.live and service.last_answer is not None
+
+
+def test_voice_level_is_normalised(client):
+    service = client.service
+    fed = []
+    service.io.feed_sound = fed.append
+    for _ in range(20):
+        service.on_sound(0.3, "voice")       # quiet phone voice
+    assert fed[-1] > 0.95                    # uses the LED's whole range
+    service.on_sound(0.05, "voice")          # background noise stays low
+    assert fed[-1] < 0.3
+    service.on_sound(0.3, "player")          # voice messages keep the fixed scale
+    assert fed[-1] == 0.3

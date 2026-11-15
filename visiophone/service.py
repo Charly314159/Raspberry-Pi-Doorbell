@@ -24,6 +24,7 @@ class Visiophone:
         self.mqtt = MqttBridge(self)
         self.sound = SoundLevels(self.on_sound)
         self._voice_at = 0.0          # last time someone spoke through the doorbell
+        self._voice_peak = self.VOICE_PEAK_MIN
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._apply_lock = threading.Lock()
@@ -67,8 +68,17 @@ class Visiophone:
 
     TALK_HOLD_S = 5
 
+    VOICE_PEAK_DECAY = 0.995      # per 40 ms frame: the reference peak halves in about 6 s
+    VOICE_PEAK_MIN = 0.2          # never amplify more than 5x (keeps background noise dark)
+
     def on_sound(self, level, source):
-        self.io.feed_sound(level)
+        if source == "voice":
+            # Automatic sensitivity: phones send quieter, compressed voices than
+            # computers; scale the level to the speaker's recent peaks
+            self._voice_peak = max(level, self._voice_peak * self.VOICE_PEAK_DECAY, self.VOICE_PEAK_MIN)
+            self.io.feed_sound(min(1.0, level / self._voice_peak))
+        else:
+            self.io.feed_sound(level)
         # Somebody speaking to the visitor (two-way audio) has answered;
         # voice messages played by the doorbell itself do not count.
         if source == "voice" and level > 0.05:
