@@ -180,6 +180,22 @@
       <button type="submit" name="reset" value="1">Back to defaults</button>
     </div>
   </form>
+  <details {{ 'open' if cam.color_matrix }}>
+    <summary>Colour calibration {{ '(active)' if cam.color_matrix else '' }}</summary>
+    <p class="muted small">A 3×3 matrix, row by row, measured by comparing this camera with a reference
+       (another camera filming the same scene, or a colour chart). It is applied on top of the sensor's
+       colour correction, for every light colour temperature. See the manual.</p>
+    <form method="post" action="{{ url_for('camera_color') }}" class="form">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <label>Matrix (9 numbers)
+        <input name="matrix" value="{{ cam.color_matrix|join(', ') }}" placeholder="1, 0, 0, 0, 1, 0, 0, 0, 1">
+      </label>
+      <div class="actions">
+        <button type="submit">Apply calibration</button>
+        {% if cam.color_matrix %}<button type="submit" name="clear" value="1">Remove calibration</button>{% endif %}
+      </div>
+    </form>
+  </details>
 </section>
 {% endif %}
 

@@ -49,6 +49,7 @@ DEFAULTS = {
         "awb_red": 1.5,            # manual white balance gains
         "awb_blue": 1.5,
         "denoise": "auto",         # auto | off | cdn_off | cdn_fast | cdn_hq
+        "color_matrix": [],        # 9 numbers: colour calibration applied to the tuning file
     },
     "audio": {
         "microphone": "",          # ALSA "card_id,device", e.g. "Device,0"; empty = none

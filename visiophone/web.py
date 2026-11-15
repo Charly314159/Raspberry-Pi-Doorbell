@@ -242,6 +242,22 @@ def create_app(service):
         report("Image settings applied.", service.apply_streams())
         return redirect(url_for("camera") + "#image")
 
+    @app.route("/camera/color", methods=["POST"])
+    @login_required
+    def camera_color():
+        if request.form.get("clear"):
+            matrix = []
+        else:
+            from .tuning import parse_matrix
+            try:
+                matrix = parse_matrix(request.form.get("matrix", ""))
+            except ValueError as e:
+                flash(str(e), "error")
+                return redirect(url_for("camera") + "#image")
+        cfg.update("camera", {"color_matrix": matrix})
+        report("Colour calibration " + ("removed." if not matrix else "applied."), service.apply_streams())
+        return redirect(url_for("camera") + "#image")
+
     @app.route("/camera/rescan", methods=["POST"])
     @login_required
     def camera_rescan():

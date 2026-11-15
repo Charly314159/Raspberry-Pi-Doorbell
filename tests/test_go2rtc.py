@@ -91,3 +91,23 @@ def test_test_tone_microphone(config, hw, monkeypatch):
     data, warnings = render(config, hw, monkeypatch)
     assert "aevalsrc=exprs=0.25*sin(2*PI*880*t)*lt(mod(t\\,1)\\,0.2)" in data["streams"]["doorbell"][1]
     assert "libopus" in data["streams"]["doorbell_web"][0]
+
+
+def test_color_matrix_tuning(config, hw, monkeypatch, tmp_path):
+    import json
+    from visiophone import tuning
+    base = tmp_path / "imx219_noir.json"
+    base.write_text(json.dumps({"version": 2.0, "algorithms": [
+        {"rpi.awb": {}}, {"rpi.ccm": {"ccms": [{"ct": 3000, "ccm": [2, 0, 0, 0, 1, 0, 0, 0, 1]}]}}]}))
+    hw["tuning_dir"] = str(tmp_path)
+    monkeypatch.setattr(go2rtc, "write_calibrated",
+                        lambda b, m: tuning.write_calibrated(b, m, directory=str(tmp_path / "state")))
+    config.update("camera", {"source": "csi", "noir": True,
+                             "color_matrix": [1, 0, 0, 0, 1, 0, 0, 0, 0.5]})
+    data, warnings = render(config, hw, monkeypatch)
+    src = data["streams"]["doorbell"][0]
+    path = src.split("--tuning-file ")[1].split()[0]
+    assert "tuning-imx219_noir-" in path and warnings == []
+    ccm = json.load(open(path))["algorithms"][1]["rpi.ccm"]["ccms"][0]["ccm"]
+    assert ccm == [2, 0, 0, 0, 1, 0, 0, 0, 0.5]
+    assert tuning.parse_matrix("1,0,0; 0,1,0; 0,0,1") == [1, 0, 0, 0, 1, 0, 0, 0, 1]

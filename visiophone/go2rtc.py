@@ -14,6 +14,7 @@ import yaml
 
 from . import system
 from .config import CONFIG_DIR
+from .tuning import write_calibrated
 
 GO2RTC_CONFIG = os.path.join(CONFIG_DIR, "go2rtc.yaml")
 API_URL = "http://127.0.0.1:1984"
@@ -98,12 +99,20 @@ def video_source(cam, hw, warnings):
             warnings.append(f"CSI camera {cam['csi_index']} not found.")
             return None
         args = ["rpicam-vid -t 0 -n --inline --flush", f"--camera {cam['csi_index']}"]
+        tuning = None
         if cam["noir"]:
             tuning = os.path.join(hw["tuning_dir"], f"{sensor['sensor']}_noir.json")
-            if os.path.exists(tuning):
-                args.append(f"--tuning-file {tuning}")
-            else:
+            if not os.path.exists(tuning):
                 warnings.append(f"No NoIR tuning file for {sensor['sensor']}: standard tuning used.")
+                tuning = None
+        if cam.get("color_matrix"):
+            base = tuning or os.path.join(hw["tuning_dir"], f"{sensor['sensor']}.json")
+            try:
+                tuning = write_calibrated(base, cam["color_matrix"])
+            except (OSError, ValueError) as e:
+                warnings.append(f"Colour calibration not applied: {e}")
+        if tuning:
+            args.append(f"--tuning-file {tuning}")
         mode = pick_sensor_mode(sensor["modes"], cam["width"], cam["height"], cam["framerate"], cam["full_fov"])
         if mode:
             args.append(f"--mode {mode['mode']}")

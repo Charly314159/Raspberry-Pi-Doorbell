@@ -153,7 +153,23 @@ Adjust the picture while watching the preview; each **Apply** restarts the strea
 | **Noise reduction** | *High quality* gives a cleaner image at night. |
 | **White balance** | *Automatic* by default. If colours are off, try a preset (*Indoor*, *Daylight*…) or *Manual gains*: raise red against a greenish/blue image, raise blue against a yellow/orange one. |
 
-**Back to defaults** removes every adjustment. Sensors without an infrared filter (NoIR) never give perfectly natural colours in daylight: the NoIR tuning and the white balance only limit the effect.
+**Back to defaults** removes every adjustment.
+
+Exposure and white balance are automatic: the camera adapts its exposure time and gain to the light all day long. *Exposure compensation* only shifts that automatic exposure.
+
+### Colour calibration
+
+Sensors without an infrared filter never give natural colours with their stock tuning. A **colour matrix** (Camera → Image → Colour calibration) corrects them: 9 numbers, row by row, applied on top of the sensor's colour correction for every light temperature (the doorbell writes its own tuning file in `/var/lib/visiophone/`).
+
+To measure it, film the same scene with the doorbell and a reference camera with good colours, **with the infrared LEDs covered**:
+
+1. take a frame of each camera under the same lighting;
+2. average the colour of matching areas on both (white ceiling and walls, a grey sofa, a black bag, a few saturated objects);
+3. convert both to linear RGB, scale each doorbell patch to the reference luminance (only the colour is compared), and fit the 3×3 matrix by least squares;
+4. apply it, take a new frame and repeat once with the remaining error: the camera's tone curve is not exactly sRGB, so two passes converge better than one.
+
+Check the result in daylight too: a matrix measured under artificial light may need a second calibration for daylight.
+ Sensors without an infrared filter (NoIR) never give perfectly natural colours in daylight: the NoIR tuning and the white balance only limit the effect.
 
 ## Audio
 
