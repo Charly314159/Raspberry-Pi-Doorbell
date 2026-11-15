@@ -116,3 +116,11 @@ def test_camera_page_with_csi(client):
     client.service.cfg.update("camera", {"source": "csi", "awb": "manual"})
     html = client.get("/camera").get_data(as_text=True)
     assert 'id="image"' in html and 'name="awb_red"' in html and "Manual gains" in html
+
+
+def test_voice_counts_as_answer(client):
+    service = client.service
+    service.on_sound(0.6, "player")          # the doorbell's own voice message
+    assert not service.live and service.last_answer is None
+    service.on_sound(0.6, "voice")           # somebody talks through the doorbell
+    assert service.live and service.last_answer is not None

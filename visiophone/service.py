@@ -22,7 +22,8 @@ class Visiophone:
         self.io = DoorbellIO(self.on_ring)
         self.io.led_listeners.append(lambda: self.mqtt.publish_led())
         self.mqtt = MqttBridge(self)
-        self.sound = SoundLevels(self.io.feed_sound)
+        self.sound = SoundLevels(self.on_sound)
+        self._voice_at = 0.0          # last time someone spoke through the doorbell
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._apply_lock = threading.Lock()
@@ -63,6 +64,23 @@ class Visiophone:
     def on_ring(self):
         self.rings.appendleft(time.time())
         self.mqtt.publish_ring()
+
+    TALK_HOLD_S = 5
+
+    def on_sound(self, level, source):
+        self.io.feed_sound(level)
+        # Somebody speaking to the visitor (two-way audio) has answered;
+        # voice messages played by the doorbell itself do not count.
+        if source == "voice" and level > 0.05:
+            was_live = self.live
+            self._voice_at = time.monotonic()
+            if not was_live:
+                self.answer()
+                self.mqtt.publish_live_view()
+
+    @property
+    def live(self):
+        return self.live_viewers > 0 or time.monotonic() - self._voice_at < self.TALK_HOLD_S
 
     def answer(self):
         """Someone answers the doorbell: stop the LED blinking."""
@@ -107,13 +125,16 @@ class Visiophone:
 
     def _live_view_loop(self):
         """Poll go2rtc for browser viewers and publish changes at once."""
+        published = False
         while not self._stop.wait(2):
             viewers = go2rtc.live_viewers(go2rtc.api_streams(self.cfg))
             if viewers != self.live_viewers:
                 log.info("Live viewers: %d", viewers)
-                self.live_viewers = viewers
-                if viewers:
+                if viewers and not self.live:
                     self.answer()
+                self.live_viewers = viewers
+            if self.live != published:
+                published = self.live
                 self.mqtt.publish_live_view()
 
     # --- Main ---------------------------------------------------------------

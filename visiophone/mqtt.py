@@ -234,7 +234,7 @@ class MqttBridge:
         self._publish("system", payload, retain=True)
 
     def publish_live_view(self):
-        self._publish("live_view", "ON" if self.service.live_viewers else "OFF", retain=True)
+        self._publish("live_view", "ON" if self.service.live else "OFF", retain=True)
 
     def publish_led(self):
         state = self.service.io.led_state()

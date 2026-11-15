@@ -358,21 +358,54 @@ The LED light has the effects `none` (steady), `blink`, `fast_blink`, `breathe` 
 
 ## Frigate
 
-Frigate can record and detect people on the `doorbell` stream:
+Frigate can record and detect people on the doorbell stream, and its Home Assistant integration gives dashboards a live view with **two-way audio** that works over HTTPS and remotely (through Frigate's own proxy).
+
+In Frigate's configuration (replace `doorbell` with your stream name):
 
 ```yaml
 go2rtc:
   streams:
-    doorbell: rtsp://<pi-address>:8554/doorbell
+    doorbell:
+      - rtsp://<pi-address>:8554/doorbell
+      # Two-way audio: your voice goes back to the doorbell's speaker
+      - webrtc:ws://<pi-address>:1984/api/ws?src=doorbell_talk
 cameras:
   doorbell:
     ffmpeg:
       inputs:
         - path: rtsp://127.0.0.1:8554/doorbell
-          roles: [detect, record]
+          input_args: preset-rtsp-restream
+          roles: [detect]
+    detect:
+      enabled: false        # turn on for person detection
+    record:
+      enabled: false        # turn on to record
 ```
 
-Pull a single stream from the Pi (through Frigate's own go2rtc as above) rather than several: the Pi's network and encoder are limited.
+The doorbell publishes `<name>_talk`, a stream that only carries the speaker: Frigate's go2rtc connects to it when someone talks. It does not count as a live viewer, but **speaking through the doorbell counts as an answer** for the video message blueprint.
+
+Dashboard card (Advanced Camera Card, Home Assistant opened over HTTPS):
+
+```yaml
+type: custom:advanced-camera-card
+cameras:
+  - camera_entity: camera.doorbell     # created by the Frigate integration
+    live_provider: go2rtc
+    go2rtc:
+      stream: doorbell
+      metadata_fetch_timeout_seconds: 10
+    capabilities:
+      force: [2-way-audio]
+menu:
+  buttons:
+    microphone:
+      enabled: true
+      type: toggle
+```
+
+Tap the **call** button (phone icon) to talk; the microphone button mutes you during the call.
+
+Keeping a Frigate camera on the doorbell also keeps its camera running all the time, which avoids repeated start/stop cycles of the Pi's video encoder.
 
 ## System
 

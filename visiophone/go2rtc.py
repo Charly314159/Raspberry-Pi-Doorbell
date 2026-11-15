@@ -196,10 +196,14 @@ def build(cfg, hw):
                 card_id, dev = audio["speaker"].rsplit(",", 1)
                 # Browsers send Opus, G722, PCMU or PCMA: ask go2rtc for A-law 8 kHz
                 # (its exec default, 16 kHz PCM, matches no browser and never starts)
-                web.append(f"exec:{SPEAKER_RELAY} --device plughw:CARD={card_id},DEV={dev}"
-                           f"#backchannel=1#audio=pcma/8000")
+                relay = (f"exec:{SPEAKER_RELAY} --device plughw:CARD={card_id},DEV={dev}"
+                         f"#backchannel=1#audio=pcma/8000")
             else:
-                web.append(f"alsa:device?audio={speaker}")
+                relay = f"alsa:device?audio={speaker}"
+            web.append(relay)
+            # Speaker only, for another go2rtc (e.g. Frigate's) that adds two-way
+            # audio to its own copy of the stream: webrtc:ws://<pi>:1984/api/ws?src=<name>_talk
+            streams[f"{name}_talk"] = [relay]
         streams[f"{name}_web"] = web
     else:
         warnings.append("No camera and no microphone configured: no stream is published.")
@@ -266,9 +270,12 @@ LIVE_FORMATS = ("webrtc", "mse", "hls", "mjpeg")
 
 
 def live_viewers(streams):
-    """Number of browser viewers over all streams, from /api/streams."""
+    """Number of browser viewers over all streams, from /api/streams.
+    The *_talk streams are left out: another go2rtc stays connected to them."""
     count = 0
-    for stream in (streams or {}).values():
+    for name, stream in (streams or {}).items():
+        if name.endswith("_talk"):
+            continue
         for consumer in stream.get("consumers") or []:
             if str(consumer.get("format_name", "")).startswith(LIVE_FORMATS):
                 count += 1

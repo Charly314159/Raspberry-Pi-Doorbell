@@ -63,7 +63,8 @@ def level_from_s16le(data):
 # --- Service side ----------------------------------------------------------
 
 class SoundLevels:
-    """Receives levels from the relay socket and the FIFO, calls on_level(0..1)."""
+    """Receives levels from the relay socket and the FIFO, calls
+    on_level(level 0..1, source) with source "voice" (relay) or "player" (FIFO)."""
 
     def __init__(self, on_level):
         self.on_level = on_level
@@ -94,7 +95,7 @@ class SoundLevels:
             except OSError:
                 return
             try:
-                self.on_level(float(data.decode()))
+                self.on_level(float(data.decode()), "voice")
             except ValueError:
                 pass
 
@@ -115,8 +116,8 @@ class SoundLevels:
                         data = fifo.read(chunk)
                         if not data:
                             break
-                        self.on_level(level_from_s16le(data))
-                self.on_level(0.0)
+                        self.on_level(level_from_s16le(data), "player")
+                self.on_level(0.0, "player")
             except OSError as e:
                 log.warning("Sound FIFO: %s", e)
                 self._stop.wait(5)

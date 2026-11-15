@@ -23,6 +23,7 @@ def test_csi_full_fov(config, hw, monkeypatch):
     assert "--mode 1640:1232:10:P" in src and "--rotation 180" in src and "--profile baseline" in src
     assert "--level 4 " in src
     assert data["streams"]["doorbell_web"] == ["rtsp://127.0.0.1:8554/doorbell", "exec:/usr/local/bin/visiophone-speaker --device plughw:CARD=Headphones,DEV=0#backchannel=1#audio=pcma/8000"]
+    assert data["streams"]["doorbell_talk"] == [data["streams"]["doorbell_web"][1]]
     config.update("audio", {"speaker_relay": False})
     data, _ = render(config, hw, monkeypatch, speaker="/dev/snd/pcmC0D0p")
     assert data["streams"]["doorbell_web"][1] == "alsa:device?audio=/dev/snd/pcmC0D0p"
@@ -66,6 +67,8 @@ def test_live_viewers_ignores_rtsp():
         "doorbell_web": {"consumers": [{"format_name": "mse/fmp4"}]},
         "other": {"consumers": None},
     }
+    assert go2rtc.live_viewers(streams) == 2
+    streams["doorbell_talk"] = {"consumers": [{"format_name": "webrtc/json"}]}
     assert go2rtc.live_viewers(streams) == 2
     assert go2rtc.live_viewers(None) == 0
 
