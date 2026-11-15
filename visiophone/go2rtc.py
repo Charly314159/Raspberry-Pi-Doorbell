@@ -21,6 +21,7 @@ RTSP_PORT = 8554
 KILL = "#killsignal=15#killtimeout=5"
 # Plays the browser's voice and reports its level to the service (see sound.py)
 SPEAKER_RELAY = "/usr/local/bin/visiophone-speaker"
+TEST_TONE = "test-tone"     # value of audio.microphone for the built-in test beep
 
 
 def _local_rtsp(streams_cfg, name):
@@ -159,7 +160,9 @@ def build(cfg, hw):
 
     video = video_source(cam, hw, warnings)
     mic = speaker = None
-    if audio["microphone"]:
+    if audio["microphone"] == TEST_TONE:
+        mic = TEST_TONE
+    elif audio["microphone"]:
         mic = system.alsa_path_or_warn(audio["microphone"], "capture", warnings)
     if audio["speaker"]:
         speaker = system.alsa_path_or_warn(audio["speaker"], "playback", warnings)
@@ -167,7 +170,11 @@ def build(cfg, hw):
     main = []
     if video:
         main.append(video)
-    if mic:
+    if mic == TEST_TONE:
+        # A beep every second instead of a microphone, to test the doorbell -> viewer audio path
+        main.append("exec:ffmpeg -hide_banner -v error -re -f lavfi -i sine=frequency=880:beep_factor=4 "
+                    "-c:a pcm_alaw -ar 8000 -ac 1 -f rtsp {output}" + KILL)
+    elif mic:
         main.append(f"alsa:device?audio={mic}")
     if main:
         streams[name] = main

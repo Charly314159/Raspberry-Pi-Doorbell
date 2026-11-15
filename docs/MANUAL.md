@@ -157,7 +157,7 @@ Adjust the picture while watching the preview; each **Apply** restarts the strea
 
 ## Audio
 
-Choose the **microphone** (sent with the video) and the **speaker** (plays your voice). Volumes are saved and restored at boot. **Play a test tone** checks the speaker.
+Choose the **microphone** (sent with the video) and the **speaker** (plays your voice). Without a microphone yet, choose **Test tone**: the doorbell sends a beep every second instead, to check that its sound reaches Home Assistant, Frigate or a browser (unmute the viewer). Volumes are saved and restored at boot. **Play a test tone** checks the speaker.
 
 ### Two-way audio in a browser
 

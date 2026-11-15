@@ -285,6 +285,7 @@ def create_app(service):
             mic, speaker = request.form.get("microphone", ""), request.form.get("speaker", "")
             current = cfg.section("audio")
             # A device that is unplugged right now may stay selected
+            capture.add(go2rtc.TEST_TONE)
             if mic and mic not in capture and mic != current["microphone"] or \
                speaker and speaker not in playback and speaker != current["speaker"]:
                 abort(400)

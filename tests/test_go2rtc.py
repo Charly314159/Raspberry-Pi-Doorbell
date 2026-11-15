@@ -83,3 +83,11 @@ def test_image_args(config, hw, monkeypatch):
     assert "--awbgains 1.8,1.2" in data["streams"]["doorbell"][0]
     config.update("camera", {"awb": "indoor"})
     assert "--awb indoor" in go2rtc.image_args(config.section("camera"))
+
+
+def test_test_tone_microphone(config, hw, monkeypatch):
+    config.update("camera", {"source": "csi"})
+    config.update("audio", {"microphone": "test-tone"})
+    data, warnings = render(config, hw, monkeypatch)
+    assert "sine=frequency=880" in data["streams"]["doorbell"][1]
+    assert "libopus" in data["streams"]["doorbell_web"][0]

@@ -11,7 +11,8 @@
       <select name="microphone">
         <option value="">None</option>
         {% for d in capture %}<option value="{{ d.key }}" {{ 'selected' if d.key == audio.microphone }}>{{ d.label }}</option>{% endfor %}
-        {% if audio.microphone and audio.microphone not in capture|map(attribute='key')|list %}
+        <option value="test-tone" {{ 'selected' if audio.microphone == 'test-tone' }}>Test tone (no microphone): a beep every second</option>
+        {% if audio.microphone and audio.microphone != 'test-tone' and audio.microphone not in capture|map(attribute='key')|list %}
           <option value="{{ audio.microphone }}" selected>{{ audio.microphone }} (not connected)</option>
         {% endif %}
       </select>
