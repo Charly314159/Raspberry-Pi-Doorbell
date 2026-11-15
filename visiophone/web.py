@@ -14,7 +14,7 @@ from .config import CONFIG_DIR
 
 DOCS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
 SECRET_KEY_PATH = os.path.join(CONFIG_DIR, "secret_key")
-RESOLUTIONS = [(640, 480), (1280, 720), (1280, 960), (1920, 1080)]
+RESOLUTIONS = [(640, 480), (1280, 720), (1280, 960), (1440, 1080), (1920, 1080)]
 FRAMERATES = [5, 10, 15, 20, 25, 30]
 
 

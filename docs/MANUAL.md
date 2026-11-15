@@ -131,7 +131,7 @@ This edits a block in `/boot/firmware/config.txt` marked `visiophone camera`; a 
 |---------|-------|
 | **NoIR** | For sensors without an infrared filter: if the image looks pink or magenta in daylight, check it. Night-vision modules with IR LEDs usually need it. |
 | **Full field of view** | Uses a sensor mode that reads the whole sensor. Without it, some resolutions crop the centre of the image, which loses most of a wide-angle lens. |
-| **Resolution** | 4:3 resolutions (1280×960) keep the whole image of 4:3 sensors such as the IMX219 and show visitors from head to toe. 1920×1080 is the maximum. |
+| **Resolution** | 4:3 resolutions (1280×960, 1440×1080) keep the whole image of 4:3 sensors such as the IMX219: a 16:9 resolution (1280×720, 1920×1080) keeps the full width but cuts about a quarter of the height. The hardware encoder is limited to 1920×1080, so 1440×1080 is the sharpest full-field choice. |
 | **Frame rate** | 10-15 fps is plenty for a doorbell and saves bandwidth. |
 | **Bitrate** | 1500-3000 kbit/s for 720p/960p. Raise it if the image gets blocky when people move. |
 | **Orientation** | 180° for a camera mounted upside down; mirror/flip for other mounting positions. |
