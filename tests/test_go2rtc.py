@@ -89,5 +89,5 @@ def test_test_tone_microphone(config, hw, monkeypatch):
     config.update("camera", {"source": "csi"})
     config.update("audio", {"microphone": "test-tone"})
     data, warnings = render(config, hw, monkeypatch)
-    assert "sine=frequency=880" in data["streams"]["doorbell"][1]
+    assert "aevalsrc=exprs=0.25*sin(2*PI*880*t)*lt(mod(t\\,1)\\,0.2)" in data["streams"]["doorbell"][1]
     assert "libopus" in data["streams"]["doorbell_web"][0]

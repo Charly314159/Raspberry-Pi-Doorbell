@@ -171,8 +171,10 @@ def build(cfg, hw):
     if video:
         main.append(video)
     if mic == TEST_TONE:
-        # A beep every second instead of a microphone, to test the doorbell -> viewer audio path
-        main.append("exec:ffmpeg -hide_banner -v error -re -f lavfi -i sine=frequency=880:beep_factor=4 "
+        # A 0.2 s beep every second instead of a microphone, to test the
+        # doorbell -> viewer audio path (silence in between)
+        main.append("exec:ffmpeg -hide_banner -v error -re -f lavfi "
+                    "-i aevalsrc=exprs=0.25*sin(2*PI*880*t)*lt(mod(t\\,1)\\,0.2):sample_rate=8000 "
                     "-c:a pcm_alaw -ar 8000 -ac 1 -f rtsp {output}" + KILL)
     elif mic:
         main.append(f"alsa:device?audio={mic}")
