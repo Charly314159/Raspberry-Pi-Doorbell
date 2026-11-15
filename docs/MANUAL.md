@@ -369,6 +369,12 @@ go2rtc:
       - rtsp://<pi-address>:8554/doorbell
       # Two-way audio: your voice goes back to the doorbell's speaker
       - webrtc:ws://<pi-address>:1984/api/ws?src=doorbell_talk
+  # Needed by the dashboard call (WebRTC): Frigate's go2rtc must announce an
+  # address phones can reach, not its container address
+  webrtc:
+    candidates:
+      - <home-assistant-address>:8555
+      - stun:8555
 cameras:
   doorbell:
     ffmpeg:
@@ -403,7 +409,9 @@ menu:
       type: toggle
 ```
 
-Tap the **call** button (phone icon) to talk; the microphone button mutes you during the call.
+With `menu.style: overlay` the card's menu stays visible over the picture. Tap its **phone icon** to call the doorbell and talk; with `live.microphone.auto_unmute: [call]` your microphone opens at once. Tap it again to hang up. To make the card ring when the button is pressed (Answer / Reject for 30 s), add `triggers: {entities: [event.visiophone_doorbell]}` to the camera and `view: {triggers: {actions: {trigger: call, untrigger: call}}}` to the card.
+
+If the video plays but the call does nothing, check the `webrtc` candidates above: video can fall back to MSE over the websocket, the call cannot. Remote calls (mobile data) worked with the `stun:8555` candidate in testing.
 
 Keeping a Frigate camera on the doorbell also keeps its camera running all the time, which avoids repeated start/stop cycles of the Pi's video encoder.
 
